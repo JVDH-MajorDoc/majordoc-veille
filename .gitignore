@@ -1,5 +1,7 @@
 # La clé API, jamais versionnée
 .env
+.env.*
+!.env.exemple
 
 # États d'exécution : registre des publications déjà fichées, flux résolus, verrou
 data/

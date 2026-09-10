@@ -150,9 +150,9 @@ marche. Et le bandeau étant collant, chaque rangée qu'il occupe est prise au
 texte pour de bon : il en faisait trois sur iPhone, soit un quart de l'écran ;
 il en fait deux, la commande « Tout déplier » se réduisant à son icône. Les
 panneaux tiennent dans la hauteur visible, défilent sans emporter la page, et
-leur bouton de fermeture reste sous le pouce. Un jeu de tests joue tout cela sur
-iPhone SE, iPhone 13, 13 Pro Max et iPad. Une icône d'écran d'accueil permet
-enfin d'épingler le board comme une application.
+leur bouton de fermeture reste sous le pouce. Ces réglages ont été vérifiés à la
+main sur iPhone SE, iPhone 13, 13 Pro Max et iPad. Une icône d'écran d'accueil
+permet enfin d'épingler le board comme une application.
 
 **Le coût du jour est affiché en euros.** Le pied de page annonçait des tokens,
 unité qui ne dit rien à personne. Le tarif du modèle vit dans `config.json`
@@ -213,7 +213,7 @@ npm run demo && npm run preview        # http://localhost:4173
 npm run test-sources
 
 # 3. Renseigner la clé API
-cp .env.example .env                   # puis ANTHROPIC_API_KEY=sk-ant-...
+cp .env.exemple .env                   # puis ANTHROPIC_API_KEY=sk-ant-...
                                        # https://console.anthropic.com/settings/keys
 
 # 4. La vraie veille du jour
@@ -348,9 +348,28 @@ src/run.mjs           orchestrateur en ligne de commande
 src/preview.mjs       serveur local d'aperçu
 src/theme/            l'interface : index.html, app.css, app.js, fonts/
 src/demo.mjs          jeu de données d'exemple
+tests/                tests unitaires (node:test, sans dépendance)
 deploy/               systemd, nginx, envoi FTP/SSH, planification locale
 site/                 généré — le dossier à déposer sur le serveur
 ```
+
+---
+
+## Tests
+
+```bash
+npm test
+```
+
+Trente-six tests, sans dépendance ni clé API, sur les mécanismes qu'une erreur
+rendrait invisible : le contrôle des chiffres d'une fiche contre son résumé
+source (virgule décimale contre séparateur de milliers, millésimes ignorés,
+pourcentage écrit en fraction), la construction du vocabulaire de recherche
+depuis `config.json`, le classement — le titre décide du thème, le résumé
+départage — les quotas par thème et par revue, et le registre des publications
+déjà fichées. Le même jeu tourne sur Node 18, 20 et 22 à chaque poussée, avec
+le contrôle de syntaxe, `shellcheck` sur les scripts de déploiement et une
+génération de démonstration complète.
 
 ---
 

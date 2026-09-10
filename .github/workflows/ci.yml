@@ -1,0 +1,45 @@
+name: Contrôles
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  controles:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['18', '20', '22']
+    name: Node ${{ matrix.node }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Syntaxe de tous les modules
+        run: |
+          set -e
+          find src -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          echo "Tous les modules se parsent."
+
+      - name: config.json est un JSON valide
+        run: node -e "JSON.parse(require('fs').readFileSync('config.json','utf8')); console.log('config.json valide.')"
+
+      - name: Scripts de déploiement
+        run: |
+          command -v shellcheck >/dev/null || sudo apt-get install -y shellcheck
+          shellcheck --severity=warning --exclude=SC1091 deploy/*.sh
+
+      - name: Tests unitaires
+        run: npm test
+
+      - name: Génération de démonstration (aucun appel à l'IA, aucune clé)
+        run: |
+          npm run demo
+          test -f site/index.html
+          test -d site/data
+          echo "Le board de démonstration se construit."

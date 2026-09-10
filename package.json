@@ -4,6 +4,18 @@
   "private": true,
   "type": "module",
   "description": "Board de veille bibliographique quotidien pour médecins — PubMed + revues de spécialité, résumés structurés en français.",
+  "license": "MIT",
+  "author": "Joffrey Van Den Heuvel",
+  "keywords": [
+    "veille",
+    "bibliographie",
+    "medecine",
+    "pubmed",
+    "europe-pmc",
+    "rss",
+    "francais",
+    "auto-heberge"
+  ],
   "engines": {
     "node": ">=18"
   },
@@ -14,6 +26,7 @@
     "preview": "node src/preview.mjs",
     "autonome": "node src/run.mjs --inline",
     "flux": "node src/decouvrir.mjs",
-    "diag": "node src/diagnostic.mjs"
+    "diag": "node src/diagnostic.mjs",
+    "test": "node --test tests/*.test.mjs"
   }
 }
