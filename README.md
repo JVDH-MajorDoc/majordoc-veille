@@ -10,6 +10,39 @@ autre spécialité.
 
 ---
 
+## Destination et limites
+
+MajorDoc est un **outil de veille bibliographique**. Il sert à décider quoi lire.
+
+- Il ne traite **aucune donnée de patient** : rien n'entre dans le programme que des flux
+  bibliographiques publics, et il n'existe aucun champ de saisie, aucun import, aucune
+  connexion à un logiciel métier.
+- Il ne produit **aucune sortie spécifique à un patient** : la veille du jour est la même
+  pour tous ses lecteurs. Les préférences de thèmes réordonnent l'affichage, elles ne
+  retirent jamais une publication.
+- Les fiches sont **rédigées automatiquement à partir des résumés publiés**. Elles ne
+  remplacent pas la lecture de l'article ou du texte de référence, dont le lien figure sur
+  chaque fiche, et n'engagent aucune décision clinique.
+- Une fiche de recommandation **rapporte ce que le texte demande** ; elle ne prescrit rien
+  en son nom propre.
+
+À ce titre il relève de la catégorie « *scientific literature* » que le guide européen
+[MDCG 2019-11](https://health.ec.europa.eu/system/files/2020-09/md_mdcg_2019_11_guidance_en_0.pdf)
+exclut explicitement de la définition du logiciel-dispositif médical, et il ne satisfait
+pas l'étape 4 de la qualification (« *is the action for the benefit of individual
+patients?* »). Toute évolution qui ferait entrer des données de patients, ou produirait une
+sortie propre à un patient, changerait cette analyse de fond en comble.
+
+Deux garde-fous vont dans le même sens et méritent d'être connus avant usage. **Les
+chiffres sont vérifiés** : chaque nombre écrit dans une fiche est comparé au résumé
+d'origine, et ceux qui ne s'y retrouvent pas sont signalés sur la fiche même. **La matière
+disponible est déclarée** : une fiche établie à partir du seul titre le dit.
+
+Ce n'est pas un dispositif médical, ce n'est pas un outil d'aide à la décision, et il ne
+doit être présenté ni comme l'un ni comme l'autre.
+
+---
+
 ## Le pipeline
 
 ```
@@ -20,7 +53,7 @@ Europe PMC (MEDLINE / PubMed)         ~250 à 500 articles bruts
   + Annales d'Endocrinologie (SFE)
         ↓  dédoublonnage
         ↓  score : type d'étude, revue, fraîcheur, recoupement des requêtes
-        ↓  sélection des 12 meilleurs, 4 par thème au maximum
+        ↓  sélection des 15 meilleurs, 5 par thème et 2 par revue au maximum
   API Claude                          fiches structurées + l'édito du jour
         ↓
   site/                               un dossier statique à déposer sur un serveur

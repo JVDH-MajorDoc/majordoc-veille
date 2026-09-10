@@ -220,13 +220,18 @@ const OUTIL_RECO = {
       },
       points_cles: { type: 'array', items: { type: 'string' }, description: '3 à 5 points, une phrase chacun, les plus opérationnels.' },
       population: { type: 'string', description: "À qui ça s'applique : population, situation clinique, cadre de prescription." },
-      pour_la_pratique: { type: 'string', description: "Ce qu'un endocrinologue fait différemment en consultation à partir de maintenant." },
+      pour_la_pratique: {
+        type: 'string',
+        description:
+          "Ce que le texte demande de faire différemment, tel qu'il l'écrit. Rester descriptif et attribuer : " +
+          "c'est la recommandation qui prescrit, pas cette fiche.",
+      },
       type: {
         type: 'string',
         enum: ['Recommandation', 'Consensus', 'Avis', 'Fiche mémo', 'Actualité', 'Autre'],
       },
       theme: { type: 'string', enum: THEMES_DEFAUT },
-      interet: { type: 'integer', minimum: 1, maximum: 5, description: "Intérêt pour la pratique d'un endocrinologue français. 5 = opposable, à appliquer." },
+      interet: { type: 'integer', minimum: 1, maximum: 5, description: "Intérêt pour la pratique d'un endocrinologue français. 5 = texte opposable." },
       certitude: {
         type: 'string',
         enum: ['Texte complet lu', 'Résumé seul', 'Titre seul'],
@@ -244,6 +249,7 @@ Règles absolues :
 - Tu es FIDÈLE au texte fourni. Tu n'inventes aucune recommandation, aucun seuil, aucun chiffre. Si le texte disponible est mince, tu remplis « certitude » en conséquence et tu restes prudent plutôt que d'extrapoler.
 - Une recommandation n'est pas une nouveauté par principe : beaucoup de publications sont des actualisations mineures. Dis-le quand c'est le cas, dans « ce_qui_change ».
 - Tu distingues ce qui est opposable (recommandation de bonne pratique, avis officiel) de ce qui est indicatif (position de société savante, actualité).
+- Tu rapportes ce que le texte dit ; tu ne prescris jamais en ton nom. Écris « la HAS demande de… », jamais « faites… ». La fiche renvoie vers le texte de référence, elle ne s'y substitue pas.
 - Style sobre et opérationnel. Le lecteur a 60 secondes.`;
 
 export async function ficherReco(el, { modele, maxTokens = 1400, themes }) {
