@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>MajorDoc — veille du jour</title>
+<meta name="description" content="La veille bibliographique du jour, résumée et traduite en français." />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#14171a" media="(prefers-color-scheme: dark)" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="MajorDoc" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="preload" href="assets/fonts/newsreader-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="assets/app.css" />
+<script>
+  // Avant peinture : évite le flash blanc au chargement en thème sombre.
+  try {
+    var p = localStorage.getItem('md.theme') || 'auto';
+    document.documentElement.dataset.theme =
+      p === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : p;
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <a class="wordmark" href="./" aria-label="MajorDoc, accueil">
+      <span class="nom">Major<em>Doc</em></span>
+      <span class="spe" id="specialite"></span>
+    </a>
+    <span class="grow"></span>
+
+    <label class="chercher">
+      <span class="oeil">Rechercher dans la veille</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+      <input id="q" type="search" placeholder="Rechercher" autocomplete="off" spellcheck="false" />
+    </label>
+
+    <div class="navjour" id="navjour" role="group" aria-label="Navigation entre les journées"></div>
+    <button class="ctrl" id="tout" aria-pressed="false" aria-label="Tout déplier">
+      <svg class="ico" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6l3-3 3 3M5 10l3 3 3-3"/></svg>
+      <span>Tout déplier</span>
+    </button>
+    <button class="ctrl" id="prefs-ouvrir" aria-haspopup="dialog" aria-label="Mes thèmes — ordre de lecture personnel" title="Mes thèmes">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M2 4.5h7.2M13.8 4.5H14M2 11.5h0.2M6.8 11.5H14"/><circle cx="11.5" cy="4.5" r="1.9"/><circle cx="4.5" cy="11.5" r="1.9"/></svg>
+    </button>
+    <button class="ctrl" id="theme" aria-label="Changer de thème" title="Thème">◐</button>
+    <button class="ctrl" id="aide-ouvrir" aria-label="Aide et raccourcis" title="Aide">?</button>
+  </div>
+</header>
+
+<main class="page">
+  <div id="peremption"></div>
+  <div id="avis"></div>
+
+  <section class="une" id="une" aria-labelledby="une-titre"></section>
+
+  <div class="corps">
+    <nav class="rail" id="rail" aria-label="Sommaire et filtres"></nav>
+    <div class="flux">
+      <div class="compte">
+        <span id="compte"></span>
+        <span id="archives-lien"></span>
+        <span><button id="tout-lu">Tout marquer comme lu</button></span>
+      </div>
+      <section id="recos" aria-labelledby="recos-titre"></section>
+      <div id="flux"></div>
+      <footer class="pied" id="pied"></footer>
+    </div>
+  </div>
+</main>
+
+<div class="avis-action" id="avis-action" role="status" aria-live="polite" hidden></div>
+
+<dialog class="aide archives-panneau" id="archives-panneau">
+  <h2>Journées archivées</h2>
+  <p class="archives-intro">Toutes les veilles publiées depuis la mise en service.</p>
+  <label class="chercher archives-filtre">
+    <span class="oeil">Filtrer les journées</span>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+    <input id="archives-q" type="search" placeholder="Filtrer par titre ou par date" autocomplete="off" />
+  </label>
+  <div class="archives-liste" id="archives-liste"></div>
+  <button class="ctrl fermer" id="archives-fermer">Fermer</button>
+</dialog>
+
+<dialog class="aide prefs" id="prefs" aria-labelledby="prefs-titre">
+  <h2 id="prefs-titre">Mes thèmes</h2>
+  <p class="prefs-intro">
+    <b>Suivi de près</b> ouvre votre board. <b>En retrait</b> descend en fin de page,
+    estompé — jamais supprimé.
+  </p>
+  <div class="prefs-liste" id="prefs-liste"></div>
+  <p class="prefs-note">
+    Ces préférences sont propres à ce navigateur : réglez-les une fois sur chaque
+    poste où vous consultez la veille.
+  </p>
+  <button class="ctrl fermer" id="prefs-fermer">Fermer</button>
+</dialog>
+
+<dialog class="aide" id="aide">
+  <h2>Comment ça marche</h2>
+  <p style="color: var(--ink-2); margin: 0; font-size: 14px;">
+    Chaque matin, MajorDoc parcourt les publications de la spécialité, retient les plus solides
+    et en rédige une fiche en français. Les articles sont classés par intérêt clinique :
+    le premier est celui à lire si vous n'en lisez qu'un.
+  </p>
+  <p style="color: var(--ink-2); margin: 14px 0 0; font-size: 14px;">
+    Le bouton à curseurs, en haut, ouvre <b>Mes thèmes</b> : chacun y règle son ordre de
+    lecture — les thèmes suivis de près en tête, ceux qui ne relèvent pas de sa pratique
+    en retrait. Le <b>signet</b> sous chaque fiche la range dans <b>Mis de côté</b>, dans la colonne de gauche.
+    Son contenu y est recopié : elle reste lisible même quand sa journée s'éloigne.
+    Les flèches <b>‹</b> et <b>›</b> en haut passent d'une journée à l'autre ; un clic sur la date
+    ouvre l'ensemble des journées archivées, groupées par mois. Une recherche peut aussi être
+    relancée sur tout l'historique.
+  </p>
+  <dl>
+    <dt><kbd>/</kbd></dt><dd>Rechercher</dd>
+    <dt><kbd>J</kbd> <kbd>K</kbd></dt><dd>Article suivant / précédent</dd>
+    <dt><kbd>O</kbd></dt><dd>Ouvrir la fiche de lecture</dd>
+    <dt><kbd>L</kbd></dt><dd>Marquer comme lu</dd>
+    <dt><kbd>G</kbd></dt><dd>Mettre de côté</dd>
+    <dt><kbd>D</kbd></dt><dd>Tout déplier</dd>
+    <dt><kbd>?</kbd></dt><dd>Ce panneau</dd>
+  </dl>
+  <p style="color: var(--ink-2); margin: 14px 0 0; font-size: 14px;">
+    Tous les chiffres d'une fiche sont comparés au résumé d'origine à la génération.
+    Ceux qui ne s'y retrouvent pas sont signalés en tête de fiche, sur fond ocre :
+    la fiche reste lisible, mais ces valeurs-là sont à vérifier dans l'article avant
+    d'être citées.
+  </p>
+  <p style="color: var(--ink-3); font-size: 12.5px; margin-top: 18px;">
+    Les fiches sont rédigées à partir des résumés publiés. Elles servent à décider quoi lire —
+    elles ne remplacent pas l'article et n'engagent aucune décision clinique.
+  </p>
+  <button class="ctrl fermer" id="aide-fermer">Fermer</button>
+</dialog>
+
+<script>window.MAJORDOC_INLINE = /*__DATA__*/ null /*__FIN__*/;</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

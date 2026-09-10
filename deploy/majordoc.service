@@ -1,0 +1,33 @@
+# MajorDoc — génération de la veille du jour (unité oneshot)
+# Copier dans /etc/systemd/system/ puis : systemctl daemon-reload
+[Unit]
+Description=MajorDoc — génération de la veille bibliographique
+Documentation=file:/opt/majordoc/README.md
+After=network-online.target
+Wants=network-online.target
+# En cas d'échec, prévenir l'exploitant (cf. deploy/alerte.sh).
+OnFailure=majordoc-alerte.service
+
+[Service]
+Type=oneshot
+User=majordoc
+Group=majordoc
+WorkingDirectory=/opt/majordoc
+EnvironmentFile=/opt/majordoc/.env
+ExecStart=/usr/bin/node /opt/majordoc/src/run.mjs
+TimeoutStartSec=900
+
+# Durcissement : le service ne peut écrire que dans son propre dossier.
+# Il y écrit site/ (le board publié) et data/ (registre des recommandations
+# déjà vues, adresses de flux résolues, journaux).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/majordoc
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

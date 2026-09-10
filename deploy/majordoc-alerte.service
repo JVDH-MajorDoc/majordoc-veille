@@ -1,0 +1,12 @@
+# MajorDoc — alerte après un échec de la génération.
+# Déclenché par OnFailure= dans majordoc.service ; jamais par un timer.
+# Copier dans /etc/systemd/system/ puis : systemctl daemon-reload
+#
+# Test à la main (simule une panne, envoie la vraie notification) :
+#   systemctl start majordoc-alerte.service
+[Unit]
+Description=MajorDoc — notification d'échec de la génération
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/majordoc/deploy/alerte.sh

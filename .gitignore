@@ -1,0 +1,15 @@
+# La clé API, jamais versionnée
+.env
+
+# États d'exécution : registre des publications déjà fichées, flux résolus, verrou
+data/
+
+# Le site produit et le fichier autonome sont des résultats de build
+site/
+board.html
+
+# Audits de coupe produits par --audit
+audit-*.md
+
+node_modules/
+.DS_Store

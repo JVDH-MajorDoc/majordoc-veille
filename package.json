@@ -1,0 +1,19 @@
+{
+  "name": "majordoc",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Board de veille bibliographique quotidien pour médecins — PubMed + revues de spécialité, résumés structurés en français.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "digest": "node src/run.mjs",
+    "demo": "node src/run.mjs --demo",
+    "test-sources": "node src/run.mjs --dry-run",
+    "preview": "node src/preview.mjs",
+    "autonome": "node src/run.mjs --inline",
+    "flux": "node src/decouvrir.mjs",
+    "diag": "node src/diagnostic.mjs"
+  }
+}
