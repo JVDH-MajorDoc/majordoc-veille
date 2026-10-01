@@ -717,10 +717,10 @@ rm -rf /opt/majordoc/site/data/audio
 
 ## 15. Mettre à jour MajorDoc
 
-L'archive se télécharge depuis les **Releases** du dépôt GitHub : chaque tag
-`maj-AAAA-MM-JJ` poussé y publie `majordoc-maj-AAAA-MM-JJ.zip`, construite
-seulement si les tests passent (`git tag maj-2026-10-01 && git push origin
-maj-2026-10-01`). Copiez-la dans `/tmp` du conteneur, puis deux commandes :
+L'archive se télécharge depuis les **Releases** du dépôt GitHub. Pour en
+publier une : onglet **Actions** → *Archive de mise à jour* → **Run workflow**
+(ou pousser un tag `maj-AAAA-MM-JJ`). Elle n'est construite que si les tests
+passent. Copiez-la dans `/tmp` du conteneur, puis deux commandes :
 
 ```bash
 cd /tmp && rm -rf majordoc && unzip -q majordoc-maj-AAAA-MM-JJ.zip

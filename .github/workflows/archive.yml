@@ -1,9 +1,11 @@
 name: Archive de mise à jour
 
-# Pousser un tag « maj-AAAA-MM-JJ » publie l'archive majordoc-maj-AAAA-MM-JJ.zip
-# dans les Releases du dépôt, prête pour deploy/mettre-a-jour.sh :
+# Publie majordoc-maj-AAAA-MM-JJ.zip dans les Releases du dépôt, prête pour
+# deploy/mettre-a-jour.sh. Deux façons de la déclencher :
 #
-#   git tag maj-2026-10-01 && git push origin maj-2026-10-01
+#   · depuis GitHub : onglet Actions → « Archive de mise à jour » → Run workflow
+#     (la date du jour par défaut) ;
+#   · en ligne de commande : git tag maj-2026-10-01 && git push origin maj-2026-10-01
 #
 # L'archive n'est construite que si les tests passent : une version cassée ne
 # doit pas pouvoir atterrir sur le serveur du cabinet.
@@ -11,6 +13,11 @@ name: Archive de mise à jour
 on:
   push:
     tags: ['maj-*']
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Date de la mise à jour (AAAA-MM-JJ) — vide : aujourd'hui"
+        required: false
 
 permissions:
   contents: write
@@ -29,17 +36,25 @@ jobs:
         run: npm test
 
       - name: Construction de l'archive
+        env:
+          DATE_DEMANDEE: ${{ inputs.date }}
         run: |
           set -e
-          ARCHIVE="majordoc-maj-${GITHUB_REF_NAME#maj-}.zip"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            JOUR="${GITHUB_REF_NAME#maj-}"
+          else
+            JOUR="${DATE_DEMANDEE:-$(date -u +%F)}"
+          fi
+          echo "$JOUR" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "Date invalide : $JOUR" >&2; exit 1; }
+          ARCHIVE="majordoc-maj-$JOUR.zip"
           git archive --format=zip --prefix=majordoc/ -o "$ARCHIVE" HEAD
           unzip -l "$ARCHIVE" | tail -1
-          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+          { echo "ARCHIVE=$ARCHIVE"; echo "JOUR=$JOUR"; } >> "$GITHUB_ENV"
 
       - name: Publication
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$ARCHIVE" \
-            --title "Mise à jour du ${GITHUB_REF_NAME#maj-}" \
+          gh release create "maj-$JOUR" "$ARCHIVE" --target "$GITHUB_SHA" \
+            --title "Mise à jour du $JOUR" \
             --notes "Archive prête pour deploy/mettre-a-jour.sh (INSTALLATION.md, section 15)."
