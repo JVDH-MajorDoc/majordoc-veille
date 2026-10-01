@@ -361,9 +361,10 @@ Rythmologie / Coronaire / Valvulopathies.
 
 ## Coût
 
-Environ 1 000 tokens d'entrée et 500 de sortie par fiche, plus un petit appel pour
-l'édito. Pour 12 fiches par jour, on reste de l'ordre de **quelques euros par mois**
-sur Sonnet. Le compteur exact s'affiche en pied de board après chaque exécution, et
+Environ 1 000 tokens d'entrée et 500 à 1 000 de sortie par fiche (réflexion du
+modèle comprise), plus un petit appel pour l'édito. Pour 12 fiches par jour, on reste
+de l'ordre de **quelques euros par mois** sur Claude Sonnet 5.5 (2 $ / 10 $ par
+million de tokens). Le compteur exact s'affiche en pied de board après chaque exécution, et
 `npm run test-sources` permet de régler les requêtes sans rien dépenser.
 
 ---

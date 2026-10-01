@@ -424,10 +424,10 @@ Le pied de page du board affiche le coût de la génération du matin. Le tarif
 vit dans `config.json` :
 
 ```json
-"tarif": { "entree_usd_mtok": 3, "sortie_usd_mtok": 15, "eur_usd": 0.86 }
+"tarif": { "entree_usd_mtok": 2, "sortie_usd_mtok": 10, "eur_usd": 0.86 }
 ```
 
-Ce sont les prix de Sonnet 4.5 par million de tokens et un taux de change. À
+Ce sont les prix de Claude Sonnet 5.5 par million de tokens et un taux de change. À
 revoir si vous changez de modèle ou si les prix bougent ; supprimer le bloc
 revient à l'affichage en tokens seuls. L'ordre de grandeur d'une journée à
 quinze fiches est de quelques dizaines de centimes.
@@ -709,6 +709,33 @@ qu'on oublie de lire ; et il ne touche jamais à `config.json`, `.env` ni
 
 Il s'arrête avant de publier : la dernière étape, qu'il affiche, reste à lancer
 à la main. C'est volontaire — on regarde la veille avant de la republier.
+
+### Passage à Claude Sonnet 5.5 (avant le 24 novembre 2026)
+
+Anthropic retire Claude Sonnet 4.5 le 24/11/2026 (disponibilité dégradée dès le
+30/10). Comme le script ne réécrit jamais `config.json`, reportez à la main le
+bloc `anthropic` de la nouvelle archive — le script le signale à l'étape 4 :
+
+```json
+"anthropic": {
+  "model": "claude-sonnet-5-5",
+  "effort": "low",
+  "max_tokens": 8000,
+  "repli_refus": "default",
+  "concurrence": 4,
+  "tarif": { "entree_usd_mtok": 2, "sortie_usd_mtok": 10, "eur_usd": 0.86 }
+}
+```
+
+Oublier ce report ne casse rien : un `claude-sonnet-4-5` resté en place est
+remplacé à l'exécution par `claude-sonnet-5-5`, avec un avertissement dans le
+journal. Mais le coût affiché resterait calculé au tarif de Sonnet 4.5.
+
+- `effort` règle la réflexion du modèle avant d'écrire : `low` suffit pour des
+  fiches ; `medium` si elles manquent de finesse, au prix de plus de tokens.
+- `max_tokens` inclut cette réflexion : ne pas redescendre sous 8000.
+- `repli_refus` : si le modèle décline une demande (filtre de sécurité), l'API
+  la rejoue d'elle-même sur un autre modèle. `null` pour désactiver.
 
 Deux variables si l'installation n'est pas à l'endroit habituel :
 `MAJORDOC_CIBLE` (défaut `/opt/majordoc`) et `MAJORDOC_UTILISATEUR`

@@ -7,13 +7,16 @@
   "max_articles_resumes": 15,
   "max_articles_candidats": 300,
   "anthropic": {
-    "model": "claude-sonnet-4-5",
-    "max_tokens": 1600,
+    "commentaire": "Modèle Claude Sonnet 5.5 (Sonnet 4.5 est retiré le 24/11/2026). effort : profondeur de réflexion avant d'écrire — low (défaut, conseillé pour du résumé), medium ou high si les fiches manquent de finesse, au prix de plus de tokens de sortie. max_tokens inclut cette réflexion. repli_refus : si le modèle décline une requête, l'API la rejoue sur le modèle de repli recommandé ; null pour désactiver.",
+    "model": "claude-sonnet-5-5",
+    "effort": "low",
+    "max_tokens": 8000,
+    "repli_refus": "default",
     "concurrence": 4,
     "tarif": {
-      "commentaire": "Prix du modèle, pour afficher le coût du jour en euros au pied du board. USD par million de tokens (Sonnet 4.5 : 3 en entrée, 15 en sortie) et taux EUR/USD. À ajuster si le modèle ou les prix changent ; supprimer ce bloc revient à l'affichage en tokens seuls.",
-      "entree_usd_mtok": 3,
-      "sortie_usd_mtok": 15,
+      "commentaire": "Prix du modèle, pour afficher le coût du jour en euros au pied du board. USD par million de tokens (Sonnet 5.5 : 2 en entrée, 10 en sortie) et taux EUR/USD. À ajuster si le modèle ou les prix changent ; supprimer ce bloc revient à l'affichage en tokens seuls.",
+      "entree_usd_mtok": 2,
+      "sortie_usd_mtok": 10,
       "eur_usd": 0.86
     }
   },

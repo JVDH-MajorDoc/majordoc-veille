@@ -70,6 +70,17 @@ else
   echo "     Aucun réglage nouveau."
 fi
 
+# Le bloc « anthropic » porte le modèle et son tarif : un modèle retiré y
+# resterait indéfiniment, puisque config.json n'est jamais réécrit.
+MODELE="$(node -e '
+const a = require(process.argv[1]).anthropic ?? {}, b = require(process.argv[2]).anthropic ?? {};
+if (a.model && b.model !== a.model) console.log(`${b.model ?? "(absent)"} → ${a.model}`);
+' "$SOURCE/config.json" "$CIBLE/config.json" 2>/dev/null || true)"
+if [ -n "$MODELE" ]; then
+  echo "     Modèle à mettre à jour dans $CIBLE/config.json : $MODELE"
+  echo "     Reportez tout le bloc « anthropic » de $SOURCE/config.json (modèle, effort, max_tokens, tarif)."
+fi
+
 dire "5/6  Contrôles"
 cd "$CIBLE"
 

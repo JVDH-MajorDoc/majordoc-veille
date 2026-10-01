@@ -291,12 +291,21 @@ async function main() {
     console.log(`  Rédaction des fiches — ${modele}\n`);
   }
 
+  // Réglages communs aux trois rédactions (fiches, recos, édito).
+  const reglagesIA = {
+    modele,
+    themes: Object.keys(config.themes ?? {}),
+    // La réflexion de Sonnet 5.5 compte dans max_tokens : un ancien config à
+    // 1600 tronquerait des fiches. Le plafond ne coûte que ce qui est écrit.
+    maxTokens: Math.max(config.anthropic.max_tokens ?? 0, 8000),
+    effort: config.anthropic.effort,
+    repli: config.anthropic.repli_refus,
+  };
+
   let recos = [], recosRatees = [];
   if (recosBrutes.length) {
     ({ ok: recos, rates: recosRatees } = await avecReprise(ficherRecos, recosBrutes, {
-      modele,
-      themes: Object.keys(config.themes ?? {}),
-      maxTokens: 1400,
+      ...reglagesIA,
       concurrence: Math.min(3, config.anthropic.concurrence),
       onProgress: (n, total, el, res) =>
         console.log(`   ${res.erreur ? '✗' : '✓'} R${n}/${total}  ${(res.fiche?.titre_court ?? el.titre).slice(0, 74)}`),
@@ -304,9 +313,7 @@ async function main() {
   }
 
   const { ok: resultats, rates: articlesRates } = await avecReprise(ficherTous, retenus, {
-    modele,
-    themes: Object.keys(config.themes ?? {}),
-    maxTokens: config.anthropic.max_tokens,
+    ...reglagesIA,
     concurrence: config.anthropic.concurrence,
     onProgress: (n, total, art, res) =>
       console.log(`   ${res.erreur ? '✗' : '✓'} ${String(n).padStart(2)}/${total}  ${(res.fiche?.titre_fr ?? art.titre).slice(0, 76)}`),
@@ -346,13 +353,14 @@ async function main() {
       : `\n  Chiffres vérifiés : les ${totalFiches} fiches sont conformes à leur résumé source.`);
   }
 
-  let edito = null;
+  let edito = null, usageEdito = null;
   if (resultats.length || recos.length) {
-    try { ({ edito } = await redigerEdito(resultats, { modele, recos })); }
+    try { ({ edito, usage: usageEdito } = await redigerEdito(resultats, { ...reglagesIA, recos })); }
     catch (e) { console.warn(`\n  ! Édito non généré : ${e.message}`); }
   }
 
-  const usage = [...resultats, ...recos].reduce(
+  // L'édito est un appel facturé comme les autres : il entre dans le compteur.
+  const usage = [...resultats, ...recos, { usage: usageEdito }].reduce(
     (a, r) => ({ entree: a.entree + (r.usage?.input_tokens ?? 0), sortie: a.sortie + (r.usage?.output_tokens ?? 0) }),
     { entree: 0, sortie: 0 }
   );
