@@ -63,16 +63,33 @@ test('une fiche est demandée en sortie structurée, sans tool_choice forcé', a
   assert.equal(headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
 });
 
-test('chaque objet du schéma ferme ses propriétés et n’a pas de bornes numériques', async (t) => {
-  const envois = fauxFetch(t, reponseJson({ ...ficheModele, type: 'Avis', titre_court: 't', ce_qui_change: 'c', points_cles: [], population: 'p', certitude: 'Titre seul' }));
-  await ficherReco({ titre: 'Avis HAS' }, { modele: 'claude-sonnet-5-5' });
-  const schema = envois[0].corps.output_config.format.schema;
-  assert.equal(schema.additionalProperties, false);
-  for (const [cle, prop] of Object.entries(schema.properties)) {
-    assert.equal(prop.minimum, undefined, `${cle}.minimum non supporté en sortie structurée`);
-    assert.equal(prop.maximum, undefined, `${cle}.maximum non supporté en sortie structurée`);
+/**
+ * Mots-clés JSON Schema que les sorties structurées refusent (HTTP 400). Le
+ * 01/10/2026, un `minimum` oublié dans le schéma des articles a fait échouer
+ * toutes les fiches du jour : ce test passe désormais les TROIS schémas, en
+ * profondeur, et non plus un seul.
+ */
+const REFUSES = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'pattern'];
+function verifierSchema(schema, chemin = 'schéma') {
+  if (schema.type === 'object') {
+    assert.equal(schema.additionalProperties, false, `${chemin} : additionalProperties doit valoir false`);
+    assert.deepEqual([...(schema.required ?? [])].sort(), Object.keys(schema.properties ?? {}).sort(), `${chemin} : toutes les propriétés requises`);
+    for (const [k, v] of Object.entries(schema.properties ?? {})) verifierSchema(v, `${chemin}.${k}`);
   }
-  assert.deepEqual([...schema.required].sort(), Object.keys(schema.properties).sort());
+  if (schema.items) verifierSchema(schema.items, `${chemin}[]`);
+  for (const mot of REFUSES) assert.equal(schema[mot], undefined, `${chemin} : « ${mot} » refusé par les sorties structurées`);
+}
+
+test('les trois schémas (article, reco, édito) n’emploient que ce que l’API accepte', async (t) => {
+  const envois = fauxFetch(t, reponseJson({ ...ficheModele, type: 'Avis', titre_court: 't', ce_qui_change: 'c', points_cles: [], population: 'p', certitude: 'Titre seul', titre: 'T', points: [], a_lire_en_priorite: 'x' }));
+  const themes = ['Diabète', 'Thyroïde'];
+  await ficher(article, { modele: 'claude-sonnet-5-5', themes });
+  await ficherReco({ titre: 'Avis HAS' }, { modele: 'claude-sonnet-5-5', themes });
+  await redigerEdito([], { modele: 'claude-sonnet-5-5' });
+  assert.equal(envois.length, 3);
+  for (const [i, nom] of ['article', 'reco', 'édito'].entries()) {
+    verifierSchema(envois[i].corps.output_config.format.schema, nom);
+  }
 });
 
 test('le repli sur refus peut être coupé depuis le config', async (t) => {

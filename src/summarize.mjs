@@ -243,10 +243,8 @@ const SCHEMA_FICHE = {
     mots_cles: { type: 'array', items: { type: 'string' }, description: '3 à 5 mots-clés français.' },
     interet: {
       type: 'integer',
-      minimum: 1,
-      maximum: 5,
       description:
-        "Intérêt clinique pour un endocrinologue français. 5 = change la pratique ou une reco. 3 = bon à savoir. 1 = anecdotique / très spécialisé.",
+        "Intérêt clinique pour un endocrinologue français, entier de 1 à 5. 5 = change la pratique ou une reco. 3 = bon à savoir. 1 = anecdotique / très spécialisé.",
     },
   },
   required: [
