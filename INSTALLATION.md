@@ -554,23 +554,196 @@ Tout se règle dans `config.json` : `sources[].query` pour les requêtes PubMed,
 
 ---
 
+## Lecture vocale (facultatif)
+
+Le bouton *Écouter* fonctionne sans rien installer : il utilise la synthèse du
+navigateur. C'est correct sur ordinateur. Sur iPhone et iPad, c'est médiocre, et
+pour une raison qu'aucun réglage ne contourne : **Safari n'expose pas à la Web
+Speech API les voix « Améliorée » et « Premium » d'Apple**, même téléchargées dans
+Réglages → Accessibilité → Contenu énoncé. Il ne reste que les voix compactes.
+
+Pour une voix naturelle sur mobile, le conteneur fabrique un MP3 par fiche à la
+génération, avec Piper — synthèse neuronale locale, gratuite, sans réseau.
+
+### Installer Piper et une voix française
+
+```bash
+apt install -y ffmpeg python3-venv
+sudo -u majordoc -g majordoc python3 -m venv /opt/majordoc/venv
+sudo -u majordoc -g majordoc /opt/majordoc/venv/bin/pip install piper-tts
+
+# La voix, téléchargée par Piper lui-même (le modèle et son .json)
+sudo -u majordoc -g majordoc mkdir -p /opt/majordoc/voix
+sudo -u majordoc -g majordoc /opt/majordoc/venv/bin/python -m piper.download_voices \
+  fr_FR-siwis-medium --download-dir /opt/majordoc/voix
+```
+
+Rien d'autre à installer : le wheel embarque espeak-ng et ses données, il n'y a
+pas de paquet système à ajouter. Comptez environ **160 Mo** en tout — 85 Mo pour
+onnxruntime et numpy dans le venv, 60 Mo pour le modèle.
+
+### Choisir la voix, sans y passer la matinée
+
+Piper propose sept voix françaises, et l'une d'elles en contient cent
+vingt-cinq :
+
+| modèle | ce qu'il vaut |
+|---|---|
+| `fr_FR-siwis-medium` | féminine, articulation très nette, un peu scolaire |
+| `fr_FR-tom-medium` | masculine, plus chaude |
+| `fr_FR-upmc-medium` | deux locuteurs (`-s 0` et `-s 1`) |
+| **`fr_FR-mls-medium`** | **125 locuteurs** — c'est là qu'il y a le plus à trouver |
+| `fr_FR-siwis-low`, `fr_FR-gilles-low` | plus rapides, moins fines |
+
+Plutôt que de régénérer la veille à chaque essai, la planche d'écoute les
+compare sur une même phrase — une phrase qui porte un décimal, un sigle, un mot
+anglais et une incise, c'est-à-dire tout ce sur quoi une voix de synthèse
+trébuche dans une vraie fiche :
+
+```bash
+cd /opt/majordoc
+sudo -u majordoc -g majordoc node src/auditionner.mjs \
+  voix/fr_FR-siwis-medium.onnx voix/fr_FR-tom-medium.onnx \
+  --commande /opt/majordoc/venv/bin/piper
+
+# Un modèle multi-voix : on échantillonne, on affine ensuite
+sudo -u majordoc -g majordoc node src/auditionner.mjs voix/fr_FR-mls-medium.onnx \
+  --locuteurs 0,10,20,30,40,50,60,70,80,90,100,110,120 \
+  --commande /opt/majordoc/venv/bin/piper
+```
+
+Puis ouvrir `audition/index.html` — ou, depuis un autre poste :
+`python3 -m http.server -d /opt/majordoc/audition 8080`.
+
+Le gagnant se reporte dans `config.json` : `modele`, et `locuteur` pour un
+modèle multi-voix. `longueur` au-dessus de 1 ralentit la diction, ce qui suffit
+parfois à rendre une voix moins mécanique.
+
+**Ce qu'il ne faut pas espérer.** Piper est rapide et gratuit, mais c'est une
+synthèse de 2023 : les voix restent identifiables comme telles. Changer de voix
+donne un autre timbre, pas un autre genre de voix. Si aucune ne convient, le
+palier suivant n'est pas dans Piper — voyez la note du projet sur la lecture
+vocale.
+
+Si le téléchargement est bloqué par un pare-feu, les deux fichiers se prennent
+directement :
+
+```bash
+BASE=https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium
+cd /opt/majordoc/voix
+sudo -u majordoc -g majordoc curl -LO $BASE/fr_FR-siwis-medium.onnx
+sudo -u majordoc -g majordoc curl -LO $BASE/fr_FR-siwis-medium.onnx.json
+```
+
+### Activer
+
+Dans `config.json`, bloc `voix` :
+
+```json
+"voix": {
+  "actif": true,
+  "commande": "/opt/majordoc/venv/bin/piper",
+  "modele": "voix/fr_FR-siwis-medium.onnx",
+  "retention_jours": 7
+}
+```
+
+`modele` est relatif à `/opt/majordoc` ; un chemin absolu marche aussi.
+
+### Écouter le résultat sans dépenser un jeton
+
+```bash
+cd /opt/majordoc && time sudo -u majordoc -g majordoc node src/run.mjs --demo
+```
+
+La démonstration fabrique aussi l'audio. Ouvrez le board, dépliez une fiche,
+cliquez *Écouter*. Si la voix ne vous convient pas, changez de modèle et
+relancez : rien d'autre n'est à toucher.
+
+Le `time` n'est pas décoratif : c'est la mesure de ce que la voix ajoutera au
+passage du matin sur **votre** processeur. Dix fiches de démonstration donnent
+l'ordre de grandeur des quinze fiches réelles. Si le résultat vous paraît long,
+`fr_FR-siwis-low` synthétise plus vite, avec une voix moins fine.
+
+### Ce que ça coûte
+
+Une fiche lue fait une à deux minutes, soit 300 à 400 Ko en MP3 à 32 kb/s.
+Quinze fiches par jour font donc **cinq à six mégaoctets par journée**, et
+quelques minutes de processeur au passage du matin. C'est sans commune mesure
+avec les 25 Ko de texte d'une journée : l'audio a pour cette raison sa propre
+rétention, `retention_jours`, à sept par défaut. Les journées d'audio plus
+anciennes sont supprimées à chaque génération ; les fiches, elles, restent.
+Personne n'écoute la fiche du mois dernier.
+
+### Si quelque chose manque
+
+Rien ne casse. Piper absent, modèle introuvable, ffmpeg non installé : la
+génération l'écrit dans le journal, continue, et le board lit avec la voix du
+navigateur. Il en va de même pour une journée dont l'audio a été purgé. La
+lecture vocale est un confort, pas une dépendance.
+
+Pour la désactiver : `"actif": false`. Les fichiers déjà produits sont purgés par
+la rétention, ou d'un coup :
+
+```bash
+rm -rf /opt/majordoc/site/data/audio
+```
+
+---
+
 ## 15. Mettre à jour MajorDoc
 
-Quand une nouvelle version de l'archive arrive :
+Deux commandes, depuis le conteneur :
+
+```bash
+cd /tmp && rm -rf majordoc && unzip -q majordoc-maj-AAAA-MM-JJ.zip
+bash /tmp/majordoc/deploy/mettre-a-jour.sh
+```
+
+Le script sauvegarde le code en place **avant** d'y toucher et affiche la
+commande de retour en arrière ; il refuse d'avancer si les tests échouent,
+plutôt que de laisser le timer republier un board cassé le lendemain matin ; il
+signale les réglages nouveaux de `config.json` au lieu de compter sur un `diff`
+qu'on oublie de lire ; et il ne touche jamais à `config.json`, `.env` ni
+`data/`. Il ne demande ni git, ni réseau, ni dépôt distant.
+
+Il s'arrête avant de publier : la dernière étape, qu'il affiche, reste à lancer
+à la main. C'est volontaire — on regarde la veille avant de la republier.
+
+Deux variables si l'installation n'est pas à l'endroit habituel :
+`MAJORDOC_CIBLE` (défaut `/opt/majordoc`) et `MAJORDOC_UTILISATEUR`
+(défaut `majordoc`).
+
+### À la main, si l'on préfère voir chaque geste
 
 ```bash
 systemctl stop majordoc.timer
 cd /tmp && rm -rf majordoc && unzip -q majordoc-nouvelle-version.zip
 
 # on préserve la configuration et l'historique
-cp -r majordoc/src /opt/majordoc/
-cp majordoc/package.json majordoc/README.md majordoc/DEPLOIEMENT.md majordoc/INSTALLATION.md /opt/majordoc/
+cp -r majordoc/src majordoc/tests /opt/majordoc/
+cp majordoc/package.json majordoc/README.md majordoc/INSTALLATION.md /opt/majordoc/
 cp -r majordoc/deploy /opt/majordoc/
 
 chown -R majordoc:majordoc /opt/majordoc
-sudo -u majordoc -g majordoc node /opt/majordoc/src/run.mjs --dry-run   # contrôle
+
+# Deux contrôles avant de rouvrir le robinet : les tests ne demandent ni clé
+# ni réseau, le dry-run vérifie que les sources répondent — sans rien dépenser.
+cd /opt/majordoc && sudo -u majordoc -g majordoc npm test
+sudo -u majordoc -g majordoc node /opt/majordoc/src/run.mjs --dry-run
+
 systemctl start majordoc.timer
 ```
+
+Le board publié garde l'ancien rendu jusqu'au prochain passage du timer. Pour le
+mettre à jour tout de suite, sans attendre demain matin :
+
+```bash
+sudo -u majordoc -g majordoc node /opt/majordoc/src/run.mjs
+```
+
+Les lectrices n'ont rien à vider : l'adresse du CSS et du JS porte une empreinte
+du contenu, elle change avec eux.
 
 `config.json`, `.env` et `data/` ne sont volontairement pas écrasés. Si la nouvelle
 version ajoute des réglages, comparez avec le `config.json` de l'archive :

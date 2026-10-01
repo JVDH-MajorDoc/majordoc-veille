@@ -4,8 +4,15 @@
 //
 //   site/index.html
 //   site/assets/{app.css, app.js, favicon.svg, fonts/*.woff2}
-//   site/data/index.json          liste des journées disponibles
-//   site/data/AAAA-MM-JJ.json     une journée
+//   site/data/index.json               liste des journées disponibles
+//   site/data/AAAA-MM-JJ.json          une journée
+//   site/data/AAAA-MM-JJ-sources.json  les résumés d'origine de cette journée
+//
+// Les résumés d'origine voyagent à part, et ce n'est pas un détail d'implémentation :
+// la recherche dans les archives télécharge TOUTES les journées. Embarquer les
+// abstracts dans le fichier du jour aurait plus que doublé ce volume pour une
+// donnée que l'on ouvre une fois sur vingt. Ce fichier-ci n'est chargé que lorsque
+// la lectrice déplie « Résumé d'origine ».
 //
 // Publier une nouvelle journée = envoyer deux petits fichiers JSON.
 // L'option --inline produit en plus un board.html totalement autonome
@@ -15,10 +22,11 @@ import { readFile, writeFile, readdir, mkdir, copyFile, rm } from 'node:fs/promi
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { purgerAudio } from './voix.mjs';
 
 const JOURS_INDEX = 0;   // 0 = toutes les journées conservées sur disque
 
-export async function construire({ racine, digest, sortie, inline = false, joursIndex = JOURS_INDEX, conservation = 0 }) {
+export async function construire({ racine, digest, sortie, inline = false, joursIndex = JOURS_INDEX, conservation = 0, retentionAudio = 0 }) {
   const theme = path.join(racine, 'src', 'theme');
   const site = sortie ?? path.join(racine, 'site');
   const assets = path.join(site, 'assets');
@@ -55,24 +63,32 @@ export async function construire({ racine, digest, sortie, inline = false, jours
   const polices = await readdir(path.join(theme, 'fonts'));
   for (const f of polices) await copyFile(path.join(theme, 'fonts', f), path.join(assets, 'fonts', f));
 
-  // 2. Journée du jour
-  if (digest && !digest.demo) {
-    await writeFile(path.join(data, `${digest.date}.json`), JSON.stringify(digest));
-  }
-  if (digest?.demo) {
-    await writeFile(path.join(data, `${digest.date}.json`), JSON.stringify(digest));
+  // 2. Journée du jour — les résumés d'origine partent dans un fichier voisin.
+  if (digest) {
+    const { textesSource, ...jour } = digest;
+    const aSources = textesSource && Object.keys(textesSource).length > 0;
+    if (aSources) {
+      jour.aSources = true;
+      await writeFile(path.join(data, `${digest.date}-sources.json`), JSON.stringify(textesSource));
+    }
+    await writeFile(path.join(data, `${digest.date}.json`), JSON.stringify(jour));
   }
 
   // 3. Index des journées disponibles
   // Les journées passées ne sont jamais supprimées : 25 Ko par jour, soit 9 Mo par an.
   // Elles restent toutes accessibles depuis le sélecteur de date et la recherche
   // dans les archives. `jours_conservation` permet malgré tout de purger si besoin.
+  // L'audio a sa propre rétention, bien plus courte : quelques Mo par journée
+  // contre 25 Ko de texte, et personne n'écoute la fiche du mois dernier.
+  await purgerAudio(path.join(data, 'audio'), retentionAudio);
+
   const fichiers = (await readdir(data)).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().reverse();
 
   if (conservation > 0) {
     const limite = new Date(Date.now() - conservation * 86400000).toISOString().slice(0, 10);
     for (const f of fichiers.filter((f) => f.slice(0, 10) < limite)) {
       await rm(path.join(data, f), { force: true });
+      await rm(path.join(data, `${f.slice(0, 10)}-sources.json`), { force: true });
     }
   }
 
@@ -159,7 +175,7 @@ function coutTexte(usage, tarif) {
   return t;
 }
 
-export function fabriquerDigest({ config, articles, recos = [], edito, sources, sourcesFr = [], scannes, modele, usage, manquants = 0, demo = false, date, alerteHeures = 48 }) {
+export function fabriquerDigest({ config, articles, recos = [], edito, sources, sourcesFr = [], scannes, modele, usage, manquants = 0, demo = false, date, alerteHeures = 48, textesSource = null }) {
   return {
     date: date ?? new Date().toISOString().slice(0, 10),
     genereLe: new Date().toISOString(),
@@ -180,6 +196,8 @@ export function fabriquerDigest({ config, articles, recos = [], edito, sources, 
     sourcesFr,
     recos,
     articles,
+    // Séparé du reste par `construire` : cf. l'en-tête de ce fichier.
+    textesSource,
   };
 }
 
@@ -209,6 +227,7 @@ export function aplatir(resultats) {
       auteurs: article.auteurs,
       date: article.date,
       typeEtude: article.typeEtude,
+      rangRevue: article.rangRevue ?? null,
       accesLibre: article.accesLibre,
       liens: article.liens,
       score: article.score,

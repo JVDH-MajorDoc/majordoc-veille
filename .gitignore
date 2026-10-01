@@ -13,5 +13,8 @@ board.html
 # Audits de coupe produits par --audit
 audit-*.md
 
+# Planches d'écoute produites par src/auditionner.mjs
+audition/
+
 node_modules/
 .DS_Store

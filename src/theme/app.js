@@ -17,7 +17,10 @@
     marqueOn: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 2h8v12l-4-3.2L4 14z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
     coche: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     cercle: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
-    chevron: '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    chevron: '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    haut: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8.5 2.5L5 5.5H2.5v5H5l3.5 3z" fill="currentColor"/><path d="M11.2 5.6a3.6 3.6 0 0 1 0 4.8M13 3.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    stop: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.4" fill="currentColor"/></svg>',
+    cadenasOuvert: '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
   };
   var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   var JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
@@ -76,6 +79,7 @@
     index: null, jour: null, jours: [], themes: new Set(), majeurs: false, nonLus: false,
     q: '', tout: false, curseur: -1,
     vue: 'jour',            // 'jour' | 'gardes' | 'archives'
+    filtresOuverts: false,  // mobile seulement : cf. le bouton « Filtrer »
     archives: null,         // résultats de la recherche dans les archives
     chargement: false
   };
@@ -260,6 +264,26 @@
     return '<div class="jauge ' + (cls || '') + '"><div class="v">' + esc(v) + '</div><div class="l eyebrow">' + esc(l) + '</div></div>';
   }
 
+  /** Un filtre laissé actif ne doit pas disparaître avec le panneau replié. */
+  function filtresActifs() {
+    return etat.themes.size + (etat.majeurs ? 1 : 0) + (etat.nonLus ? 1 : 0);
+  }
+
+  /** La liste des titres du jour. Une seule écriture pour la colonne de bureau
+      et pour le panneau mobile : deux rendus finiraient par diverger. */
+  function sommaireHTML(vus) {
+    return '<ol class="sommaire">' + vus.map(function (a, i) {
+      return '<li' + (lus.has(a.id) ? ' class="est-lu"' : '') + ((a.interet || 0) >= 4 ? ' data-majeur="true"' : '') + '>' +
+        '<a href="#art-' + i + '" data-i="' + i + '">' +
+          '<span class="n">' + deuxChiffres(i + 1) + '</span>' +
+          '<span><span class="th">' + esc(a.theme) +
+            ((a.interet || 0) >= 4 ? '<span class="fort-point" title="Fort intérêt" aria-label="Fort intérêt">\u25cf</span>' : '') +
+          '</span>' +
+          '<span class="ti">' + esc(a.titre_fr || a.titre) + '</span></span>' +
+        '</a></li>';
+    }).join('') + '</ol>';
+  }
+
   function rendreRail() {
     var arts = articles(), vus = filtres();
     var parTheme = {};
@@ -285,17 +309,17 @@
         : '') +
       '<h2>Sommaire</h2>' +
       '<p class="note">Classés par intérêt clinique décroissant.</p>' +
-      '<ol class="sommaire">' + vus.map(function (a, i) {
-        return '<li' + (lus.has(a.id) ? ' class="est-lu"' : '') + '>' +
-          '<a href="#art-' + i + '" data-i="' + i + '">' +
-            '<span class="n">' + deuxChiffres(i + 1) + '</span>' +
-            '<span><span class="th">' + esc(a.theme) + '</span>' +
-            '<span class="ti">' + esc(a.titre_fr || a.titre) + '</span></span>' +
-          '</a></li>';
-      }).join('') + '</ol></div>' +
+      sommaireHTML(vus) + '</div>' +
       '') +
       (etat.vue !== 'jour' ? '' :
-      '<div class="filtres"><h2>Filtrer</h2><div class="filtres-liste">' +
+      '<div class="filtres" data-ouvert="' + (etat.filtresOuverts ? 'true' : 'false') + '">' +
+        '<h2>Filtrer</h2>' +
+        // Sur mobile uniquement (le CSS s'en charge) : le panneau se replie.
+        '<button class="filtres-bascule" type="button" aria-expanded="' + (etat.filtresOuverts ? 'true' : 'false') + '">' +
+          '<span>Filtrer</span>' +
+          (filtresActifs() ? '<span class="n">' + filtresActifs() + '</span>' : '') +
+        '</button>' +
+        '<div class="filtres-liste">' +
         noms.map(function (t) {
           return bouton('theme', t, t, parTheme[t], etat.themes.has(t));
         }).join('') +
@@ -321,7 +345,222 @@
     return '<span class="echelle" role="img" aria-label="Niveau de preuve : ' + esc(niveau || 'non déterminé') + '">' + b + '</span>';
   }
 
-  function entree(a, i) {
+
+  /* ---------- résumé d'origine ----------
+     La fiche annonce que ses chiffres ont été comparés au résumé source. Tant que
+     ce résumé n'est pas consultable, la lectrice doit croire l'outil sur parole.
+     Le dépliant le lui montre — c'est la garantie rendue vérifiable.
+
+     Le fichier voyage à part (data/AAAA-MM-JJ-sources.json) et n'est chargé qu'à
+     la première ouverture : la recherche dans les archives, qui télécharge toutes
+     les journées, n'en paie donc jamais le poids. */
+  var cacheSources = {};
+  /** La journée affichée porte-t-elle ses résumés d'origine ? Les journées
+      publiées avant cette version n'en ont pas : le dépliant ne s'affiche alors
+      pas du tout, plutôt que de s'ouvrir sur une déception. */
+  function jourAvecSources(j) {
+    return j && (j.aSources || j.textesSource) ? j.date : null;
+  }
+  function sourcesDuJour(date) {
+    if (etat.jour && etat.jour.date === date && etat.jour.textesSource) {
+      return Promise.resolve(etat.jour.textesSource);   // board autonome, tout est déjà là
+    }
+    if (!cacheSources[date]) {
+      cacheSources[date] = fetch('data/' + date + '-sources.json', { cache: 'no-cache' })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .catch(function () { return {}; });
+    }
+    return cacheSources[date];
+  }
+
+  /** Le dépliant n'est rendu que pour une journée dont on sait qu'elle a ses sources. */
+  function resumeOrigine(x, jourSources) {
+    if (!jourSources) return '';
+    return '<details class="source-vo" data-src-jour="' + esc(jourSources) + '" data-src-id="' + esc(x.id) + '">' +
+      '<summary>Résumé d\'origine</summary>' +
+      '<div class="source-vo-corps" data-etat="vide">Chargement…</div>' +
+      '</details>';
+  }
+
+  // `toggle` ne remonte pas : on écoute en phase de capture.
+  document.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (!d || !d.classList || !d.classList.contains('source-vo') || !d.open) return;
+    var corps = $('.source-vo-corps', d);
+    if (!corps || corps.dataset.etat !== 'vide') return;
+    corps.dataset.etat = 'charge';
+    sourcesDuJour(d.dataset.srcJour).then(function (m) {
+      var t = m && m[d.dataset.srcId];
+      corps.textContent = t || "Le résumé d'origine n'a pas été conservé pour cette journée.";
+      if (!t) corps.classList.add('absent');
+    });
+  }, true);
+
+  /* ---------- lecture vocale ----------
+     Deux chemins, dans cet ordre :
+
+     1. Un fichier audio pré-généré, quand la journée en a un. C'est le seul
+        moyen d'avoir une voix naturelle sur iPhone — voir le point 2.
+     2. À défaut, `speechSynthesis` : natif, sans dépendance ni coût, mais
+        Safari n'expose PAS à la Web Speech API les voix « Améliorée » et
+        « Premium » qu'Apple laisse pourtant télécharger dans les Réglages.
+        Sur iPhone il ne reste donc que les voix compactes. Le sélecteur de
+        voix des réglages sert surtout sur ordinateur, où Chrome et Firefox
+        exposent, eux, des voix nettement meilleures.
+
+     Le résumé d'origine, les auteurs et les mots-clés sont exclus de la
+     lecture : le premier est en anglais, les deux autres sont des listes qu'on
+     parcourt des yeux et qu'on n'écoute pas. */
+  var PARLE = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined';
+  var AUDIO = typeof window.Audio !== 'undefined';
+  var VITESSES = [['0.9', 'Posée'], ['1', 'Normale'], ['1.15', 'Alerte'], ['1.3', 'Rapide']];
+  var reglagesVoix = LS.lire('md.voix', { voix: '', vitesse: 1 });
+  var diction = { id: null, audio: null };
+
+  /** Les intitulés de rubrique servent de respiration : « Méthode. » puis le texte. */
+  function texteDe(article) {
+    var morceaux = [];
+    var pousser = function (el) {
+      if (!el) return;
+      var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (t) morceaux.push(/[.!?…]$/.test(t) ? t : t + '.');
+    };
+    pousser($('.titre', article) || $('h3', article));
+    pousser($('.accroche', article));
+    var blocs = article.querySelectorAll('.fiche .bloc, .fiche .changement, .fiche .points li');
+    for (var i = 0; i < blocs.length; i++) {
+      if (blocs[i].closest('.source-vo')) continue;
+      var dt = $('.eyebrow', blocs[i]);
+      var titre = dt ? (dt.textContent || '').trim().toLowerCase() : '';
+      if (titre === 'auteurs' || titre === 'mots-clés') continue;   // des listes, pas de la prose
+      pousser(dt);
+      pousser($('dd', blocs[i]) || (dt ? null : blocs[i]));
+    }
+    return morceaux.join(' ');
+  }
+
+  function phrases(texte) {
+    // Découpage sans lookbehind : Safari ne l'a qu'à partir de la 16.4, et la
+    // veille se lit sur des iPhone qui n'y sont pas tous.
+    var brut = texte.match(/[^.!?…]+[.!?…]*\s*/g) || [texte];
+    var out = [], courant = '';
+    for (var i = 0; i < brut.length; i++) {
+      if ((courant + ' ' + brut[i]).length > 220 && courant) { out.push(courant.trim()); courant = brut[i]; }
+      else courant = courant ? courant + ' ' + brut[i] : brut[i];
+    }
+    if (courant.trim()) out.push(courant.trim());
+    return out;
+  }
+
+  function voixFr() {
+    if (!PARLE) return [];
+    var v = window.speechSynthesis.getVoices() || [];
+    return [].slice.call(v).filter(function (x) { return /^fr(-|_|$)/i.test(x.lang || ''); });
+  }
+  function voixChoisie() {
+    var v = voixFr();
+    if (!v.length) return null;
+    for (var i = 0; i < v.length; i++) {
+      if (v[i].voiceURI === reglagesVoix.voix || v[i].name === reglagesVoix.voix) return v[i];
+    }
+    // Sans choix explicite : ce que le navigateur expose de mieux. Sur iPhone il
+    // n'y a rien à préférer, sur ordinateur ces mots font une vraie différence.
+    var mieux = v.filter(function (x) { return /(enhanced|premium|amélior|google|siri|neural)/i.test(x.name || ''); });
+    return mieux[0] || v[0];
+  }
+
+  function marquerBouton(actif) {
+    var b = document.querySelectorAll('[data-act="ecouter"]');
+    for (var i = 0; i < b.length; i++) {
+      var sien = actif && b[i].closest('.entree, .reco') &&
+        b[i].closest('.entree, .reco').dataset.id === diction.id;
+      b[i].setAttribute('aria-pressed', sien ? 'true' : 'false');
+      b[i].innerHTML = sien ? ICONES.stop + ' Arrêter' : ICONES.haut + ' Écouter';
+    }
+  }
+
+  function arreterLecture() {
+    if (diction.audio) { try { diction.audio.pause(); } catch (e) {} diction.audio = null; }
+    if (PARLE) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    diction.id = null;
+    marquerBouton(false);
+  }
+
+  /**
+   * Enchaînement un par un, et non mise en file.
+   *
+   * iOS ne joue que le PREMIER énoncé d'une file : la fiche s'arrêtait après son
+   * titre. Chaque morceau est donc lancé par la fin du précédent. Et le premier
+   * part dans le geste utilisateur, sans setTimeout : hors du geste, iOS refuse
+   * de démarrer.
+   */
+  function lireSynthese(article, id) {
+    if (!PARLE) return arreterLecture();
+    var bouts = phrases(texteDe(article));
+    if (!bouts.length) return arreterLecture();
+    var voix = voixChoisie(), k = 0;
+    function suivant() {
+      if (diction.id !== id) return;
+      if (k >= bouts.length) return arreterLecture();
+      var u = new window.SpeechSynthesisUtterance(bouts[k++]);
+      u.lang = 'fr-FR';
+      if (voix) u.voice = voix;
+      u.rate = +reglagesVoix.vitesse || 1;
+      u.onend = suivant;
+      u.onerror = function () { if (diction.id === id) arreterLecture(); };
+      try { window.speechSynthesis.speak(u); } catch (e) { arreterLecture(); }
+    }
+    suivant();
+  }
+
+  /** Le fichier pré-généré. S'il manque (journée ancienne, serveur sans audio), on retombe sur la synthèse. */
+  function lireFichier(src, article, id) {
+    var a = new window.Audio(src);
+    a.preload = 'auto';
+    try { a.playbackRate = +reglagesVoix.vitesse || 1; } catch (e) {}
+    a.onended = function () { if (diction.id === id) arreterLecture(); };
+    a.onerror = function () {
+      if (diction.id !== id) return;
+      diction.audio = null;
+      lireSynthese(article, id);
+    };
+    diction.audio = a;
+    var p = a.play();
+    if (p && p.catch) p.catch(function () {
+      if (diction.id !== id) return;
+      diction.audio = null;
+      lireSynthese(article, id);
+    });
+  }
+
+  function lire(article) {
+    var id = article.dataset.id;
+    var memeFiche = diction.id === id;
+    arreterLecture();
+    if (memeFiche) return;                     // deuxième clic : on arrête, c'est tout
+    if (!PARLE && !AUDIO) return;
+    diction.id = id;
+    marquerBouton(true);
+    var src = article.getAttribute('data-audio');
+    if (src && AUDIO) lireFichier(src, article, id);
+    else lireSynthese(article, id);
+  }
+
+  /** Le chemin du fichier pré-généré, quand la journée en a un. Absent : la synthèse prendra le relais. */
+  function attributAudio(x) {
+    return x && x.audio ? ' data-audio="' + esc(x.audio) + '"' : '';
+  }
+
+  function boutonEcouter() {
+    return (PARLE || AUDIO)
+      ? '<button type="button" data-act="ecouter" aria-pressed="false">' + ICONES.haut + ' Écouter</button>'
+      : '';
+  }
+
+  window.addEventListener('beforeunload', arreterLecture);
+  window.addEventListener('pagehide', arreterLecture);
+
+  function entree(a, i, jourSources) {
     var q = etat.q.trim();
     var liens = [];
     var lp = lienSur(a.liens && a.liens.pubmed), ld = lienSur(a.liens && a.liens.doi), le = lienSur(a.liens && a.liens.europepmc);
@@ -330,7 +569,7 @@
     if (le) liens.push('<a class="lien" href="' + esc(le) + '" target="_blank" rel="noopener">Europe PMC ↗</a>');
 
     return '<article class="entree' + (lus.has(a.id) ? ' est-lu' : '') + (estGarde(a.id) ? ' est-garde' : '') + ((a.interet || 0) >= 4 ? ' majeur' : '') + (aff(a.theme) < 0 ? ' en-retrait' : '') + '"' +
-        ' id="art-' + i + '" data-id="' + esc(a.id) + '" data-i="' + i + '" data-ouvert="' + (etat.tout ? 'true' : 'false') + '">' +
+        ' id="art-' + i + '" data-id="' + esc(a.id) + '" data-i="' + i + '"' + attributAudio(a) + ' data-ouvert="' + (etat.tout ? 'true' : 'false') + '">' +
       '<div class="tete">' +
         '<span class="n">' + deuxChiffres(i + 1) + '</span>' +
         (estGarde(a.id) ? '<span class="marque-garde" title="Mise de côté">' + ICONES.marqueOn + '</span>' : '') +
@@ -348,13 +587,15 @@
       '<p class="accroche">' + surligne(a.accroche || '', q) + '</p>' +
       '<p class="source">' +
         '<span class="revue">' + esc(a.journal || a.journalAbrege || '') + '</span>' +
+        rangBadge(a.rangRevue) +
         (a.date ? '<span>· ' + esc(dateCourte(a.date)) + '</span>' : '') +
-        (a.accesLibre ? '<span class="libre">Accès libre</span>' : '') +
+        (a.accesLibre ? '<span class="libre">' + ICONES.cadenasOuvert + ' Accès libre</span>' : '') +
       '</p>' +
       '<div class="actions">' +
         '<button class="deplier" type="button" data-role="basculer"><span class="fleche">' + ICONES.chevron + '</span><span>Fiche de lecture</span></button>' +
         liens.join('') +
         '<span class="droite">' +
+          boutonEcouter() +
           '<button type="button" data-act="garde" aria-pressed="' + estGarde(a.id) + '">' +
             (estGarde(a.id) ? ICONES.marqueOn + ' Gardé' : ICONES.marque + ' Garder') + '</button>' +
           '<button type="button" data-act="lu" aria-pressed="' + lus.has(a.id) + '">' +
@@ -367,11 +608,25 @@
         bloc('Limites', a.limites) +
         (a.auteurs ? bloc('Auteurs', String(a.auteurs).slice(0, 260)) : '') +
         ((a.mots_cles || []).length ? bloc('Mots-clés', a.mots_cles.join(' · ')) : '') +
+        resumeOrigine(a, jourSources) +
       '</div>' +
     '</article>';
   }
   function bloc(t, v) {
     return v ? '<dl class="bloc"><dt class="eyebrow">' + t + '</dt><dd>' + esc(v) + '</dd></dl>' : '';
+  }
+
+  /**
+   * La place que le cabinet a donnée à cette revue dans son `config.json` — pas
+   * un facteur d'impact, qui serait une autorité extérieure au barème. L'infobulle
+   * porte le poids exact : un classement qu'on peut lire est un classement qu'on
+   * peut contester, et c'est ce qu'on veut.
+   */
+  function rangBadge(r) {
+    if (!r || !r.label) return '';
+    var signe = r.poids > 0 ? '+' : '';
+    return '<span class="rang rang-' + esc(r.cle) + '" title="Poids de la revue dans le barème : ' +
+      signe + String(r.poids).replace('.', ',') + ' (config.json)">' + esc(r.label) + '</span>';
   }
 
   /**
@@ -406,9 +661,9 @@
     }).sort(function (a, b) { return aff(b.theme) - aff(a.theme); });
   }
 
-  function reco(r, i) {
+  function reco(r, i, jourSources) {
     var q = etat.q.trim();
-    return '<article class="reco' + (lus.has(r.id) ? ' est-lu' : '') + (estGarde(r.id) ? ' est-garde' : '') + (aff(r.theme) < 0 ? ' en-retrait' : '') + '" id="reco-' + i + '" data-id="' + esc(r.id) + '" data-ouvert="' + (etat.tout ? 'true' : 'false') + '">' +
+    return '<article class="reco' + (lus.has(r.id) ? ' est-lu' : '') + (estGarde(r.id) ? ' est-garde' : '') + (aff(r.theme) < 0 ? ' en-retrait' : '') + '" id="reco-' + i + '" data-id="' + esc(r.id) + '"' + attributAudio(r) + ' data-ouvert="' + (etat.tout ? 'true' : 'false') + '">' +
       '<div class="tete">' +
         (estGarde(r.id) ? '<span class="marque-garde" title="Mise de côté">' + ICONES.marqueOn + '</span>' : '') +
         '<span class="orga">' + esc(r.organisme || '—') + '</span>' +
@@ -424,6 +679,7 @@
         '<button class="deplier" type="button" data-role="basculer"><span class="fleche">' + ICONES.chevron + '</span><span>Détail</span></button>' +
         (lienSur(r.lien) ? '<a class="lien" href="' + esc(r.lien) + '" target="_blank" rel="noopener">Texte de référence ↗</a>' : '') +
         '<span class="droite">' +
+          boutonEcouter() +
           '<button type="button" data-act="garde" aria-pressed="' + estGarde(r.id) + '">' +
             (estGarde(r.id) ? ICONES.marqueOn + ' Gardé' : ICONES.marque + ' Garder') + '</button>' +
           '<button type="button" data-act="lu" aria-pressed="' + lus.has(r.id) + '">' +
@@ -439,6 +695,7 @@
           ? '<p class="reserve">Fiche établie à partir du ' + (r.certitude === 'Titre seul' ? 'seul intitulé' : 'résumé publié') +
             ' — se reporter au texte de référence avant toute application.</p>'
           : '') +
+        resumeOrigine(r, jourSources) +
       '</div>' +
     '</article>';
   }
@@ -450,7 +707,7 @@
       '<div class="recos">' +
         '<div class="recos-tete"><h2 id="recos-titre">Recommandations françaises</h2>' +
         '<span class="n">' + vues.length + (vues.length > 1 ? ' publications' : ' publication') + '</span></div>' +
-        vues.map(reco).join('') +
+        vues.map(function (r, i) { return reco(r, i, jourAvecSources(etat.jour)); }).join('') +
       '</div>';
   }
 
@@ -482,7 +739,7 @@
           '<div class="actions"><span class="droite"><button type="button" data-act="garde" aria-pressed="true">' +
           ICONES.marqueOn + ' Retirer</button></span></div></article>';
       }
-      var corps = x._type === 'reco' ? reco(x, i) : entree(x, i);
+      var corps = x._type === 'reco' ? reco(x, i, null) : entree(x, i, null);
       return corps.replace('<div class="tete">',
         '<p class="provenance">Veille du ' + esc(dateCourte(x._jour)) + '</p><div class="tete">');
     }).join('');
@@ -507,8 +764,9 @@
         return deja ? Promise.resolve(deja) : json('data/' + d + '.json').then(reparerThemes).catch(function () { return null; });
       }));
       lot.filter(Boolean).forEach(function (j) {
-        (j.recos || []).forEach(function (r) { if (contient(r, q)) trouves.push({ item: r, type: 'reco', jour: j.date }); });
-        (j.articles || []).forEach(function (a) { if (contient(a, q)) trouves.push({ item: a, type: 'article', jour: j.date }); });
+        var src = jourAvecSources(j);
+        (j.recos || []).forEach(function (r) { if (contient(r, q)) trouves.push({ item: r, type: 'reco', jour: j.date, src: src }); });
+        (j.articles || []).forEach(function (a) { if (contient(a, q)) trouves.push({ item: a, type: 'article', jour: j.date, src: src }); });
       });
       $('#compte').textContent = trouves.length + ' résultat(s) — ' + Math.min(i + 6, jours.length) + ' / ' + jours.length + ' journées lues';
     }
@@ -529,7 +787,7 @@
       : 'Aucun résultat pour « ' + etat.q.trim() + ' » dans les archives';
     $('#flux').innerHTML = r.length
       ? r.map(function (t, i) {
-          var corps = t.type === 'reco' ? reco(t.item, i) : entree(t.item, i);
+          var corps = t.type === 'reco' ? reco(t.item, i, t.src) : entree(t.item, i, t.src);
           return corps.replace('<div class="tete">',
             '<p class="provenance">Veille du ' + esc(dateCourte(t.jour)) + '</p><div class="tete">');
         }).join('')
@@ -547,7 +805,8 @@
       ? tous.length + (tous.length > 1 ? ' articles' : ' article') + (nbGardes() ? ' · ' + nbGardes() + ' gardé' + (nbGardes() > 1 ? 's' : '') : '')
       : vus.length + ' sur ' + tous.length + ' affichés';
 
-    var cartes = vus.map(entree);
+    var src = jourAvecSources(etat.jour);
+    var cartes = vus.map(function (a, i) { return entree(a, i, src); });
     // La zone estompée commence là où les thèmes mis en retrait débutent :
     // un séparateur explique la pâleur, sinon elle se lit comme un défaut.
     for (var iR = 0; iR < vus.length; iR++) {
@@ -661,12 +920,18 @@
       var n = (d.nb || 0) + (d.recos || 0);
       html += '<li><button type="button" data-date="' + esc(d.date) + '"' +
         (d.date === etat.jour.date ? ' aria-current="true"' : '') + '>' +
-        '<span class="jj">' + (+d.date.slice(8, 10)) + '</span>' +
+        '<span class="jj">' + (+d.date.slice(8, 10)) +
+          '<span class="jour-nom">' + esc(JOURS[jourSemaine(d.date)].slice(0, 3)) + '</span></span>' +
         '<span class="tt">' + esc(d.titre || 'Veille du jour') + '</span>' +
         '<span class="nn">' + n + '</span></button></li>';
     });
     html += '</ol>';
     $('#archives-liste').innerHTML = html;
+  }
+
+  function jourSemaine(iso) {
+    var p = String(iso || '').split('-');
+    return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay();
   }
 
   function sansAccents(t) {
@@ -678,11 +943,18 @@
     if (etat.vue === 'archives') return rendreArchives();
     rendreRecos(); rendreFlux();
   }
-  function rendre() { rendreUne(); rendreRail(); rendreVue(); rendrePied(); rendreJours(); }
-  function rafraichir() { rendreUne(); rendreRail(); rendreVue(); }
+  // Tout rendu reconstruit les cartes : une lecture en cours n'aurait plus de
+  // bouton pour l'arrêter. On la coupe avant.
+  function rendre() { arreterLecture(); rendreUne(); rendreRail(); rendreVue(); rendrePied(); rendreJours(); majBarre(); }
+  function rafraichir() { arreterLecture(); rendreUne(); rendreRail(); rendreVue(); majBarre(); }
 
   /* ---------- interactions ---------- */
   $('#rail').addEventListener('click', function (e) {
+    if (e.target.closest('.filtres-bascule')) {
+      etat.filtresOuverts = !etat.filtresOuverts;
+      rendreRail();
+      return;
+    }
     var v = e.target.closest('.vue');
     if (v) {
       etat.vue = v.dataset.vue;
@@ -709,6 +981,9 @@
     var act = e.target.closest('button[data-act]');
     if (act) {
       var id = bloc.dataset.id;
+      // Volontairement avant tout le reste, et sans rafraîchir : un rendu
+      // reconstruirait la carte et ferait disparaître le bouton en cours.
+      if (act.dataset.act === 'ecouter') { lire(bloc); return; }
       if (act.dataset.act === 'lu') {
         lus.has(id) ? lus.delete(id) : lus.add(id);
         LS.ecrire('md.lus', Array.from(lus));
@@ -818,9 +1093,146 @@
         }).join('')
       : '<p class="prefs-vide">Les thèmes apparaîtront ici dès la première veille chargée.</p>';
   }
+  /**
+   * Réglages de la lecture vocale.
+   *
+   * Le sélecteur ne liste que ce que CE navigateur expose. Sur iPhone, Safari
+   * ne donne pas accès aux voix « Améliorée » d'Apple : la liste y sera courte
+   * et les voix médiocres, et le mot le dit plutôt que de le taire. La note
+   * renvoie alors à la vraie solution, qui est l'audio pré-généré côté serveur.
+   */
+  function rendrePrefsVoix() {
+    var hote = $('#prefs-voix');
+    if (!hote) return;
+    if (!PARLE && !AUDIO) {
+      hote.innerHTML = '<p class="prefs-vide">Ce navigateur ne sait pas lire à voix haute.</p>';
+      return;
+    }
+    var v = voixFr();
+    var choisie = voixChoisie();
+    var options = v.map(function (x) {
+      var sel = choisie && (x.voiceURI === choisie.voiceURI) ? ' selected' : '';
+      return '<option value="' + esc(x.voiceURI) + '"' + sel + '>' + esc(x.name) + '</option>';
+    }).join('');
+
+    hote.innerHTML =
+      '<div class="prefs-ligne">' +
+        '<span class="prefs-theme"><span class="prefs-nom">Voix</span>' +
+          '<span class="prefs-n">' + (v.length ? v.length + (v.length > 1 ? ' voix françaises disponibles' : ' voix française disponible')
+                                               : 'aucune voix française détectée') + '</span></span>' +
+        (v.length
+          ? '<select id="voix-choix" aria-label="Voix de lecture">' + options + '</select>'
+          : '<span class="prefs-n">La lecture utilisera la voix par défaut.</span>') +
+      '</div>' +
+      '<div class="prefs-ligne">' +
+        '<span class="prefs-theme"><span class="prefs-nom">Vitesse</span></span>' +
+        '<span class="prefs-choix" role="group" aria-label="Vitesse de lecture">' +
+          VITESSES.map(function (p) {
+            return '<button type="button" data-vitesse="' + p[0] + '" aria-pressed="' +
+              (String(reglagesVoix.vitesse) === p[0]) + '">' + p[1] + '</button>';
+          }).join('') +
+        '</span>' +
+      '</div>' +
+      '<div class="prefs-ligne">' +
+        '<span class="prefs-theme"><span class="prefs-nom">Essai</span>' +
+          '<span class="prefs-n">Une phrase, pour entendre le réglage</span></span>' +
+        '<button type="button" class="prefs-essai" id="voix-essai">Écouter un exemple</button>' +
+      '</div>' +
+      '<p class="prefs-note prefs-note-voix">' +
+        'Sur iPhone et iPad, Safari ne donne pas accès aux voix « Améliorée » et ' +
+        '« Premium » d\'Apple, même téléchargées : la lecture y reste celle des voix ' +
+        'compactes. Une voix naturelle sur mobile demande des fichiers audio préparés ' +
+        'à la génération — voyez <code>voix</code> dans <code>config.json</code>.' +
+      '</p>';
+  }
+
+  function essaiVoix() {
+    if (!PARLE) return;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    var u = new window.SpeechSynthesisUtterance(
+      "Chez les patients traités par metformine, l'hémoglobine glyquée baisse de zéro virgule huit point."
+    );
+    u.lang = 'fr-FR';
+    var vx = voixChoisie(); if (vx) u.voice = vx;
+    u.rate = +reglagesVoix.vitesse || 1;
+    try { window.speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  /* ---------- panneau « Les titres du jour » et barre du pouce ----------
+     Sur mobile il n'y a pas de colonne latérale : le sommaire y était
+     simplement masqué, et il fallait parcourir une douzaine d'écrans pour
+     savoir ce qu'il y avait dans la journée. Le panneau le rend en un geste,
+     et la barre du bas le met à portée du pouce depuis n'importe quel endroit
+     de la page — 48 px en bas, contre 117 px de bandeau collant en haut. */
+  var sommairePanneau = $('#sommaire-panneau');
+  var barre = $('#barre-pouce');
+
+  function ouvrirSommaire() {
+    var vus = filtres();
+    $('#sommaire-liste').innerHTML = vus.length
+      ? sommaireHTML(vus)
+      : '<p class="archives-vide">Aucun article ne correspond aux filtres.</p>';
+    sommairePanneau.showModal();
+  }
+
+  $('#barre-sommaire').addEventListener('click', ouvrirSommaire);
+  $('#barre-haut').addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  $('#sommaire-fermer').addEventListener('click', function () { sommairePanneau.close(); });
+  $('#sommaire-liste').addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-i]');
+    if (!a) return;
+    e.preventDefault();
+    sommairePanneau.close();
+    var cible = document.getElementById('art-' + a.dataset.i);
+    if (cible) {
+      // `scrollIntoView` seul colle la carte au bord haut : on garde une marge
+      // pour que l'étiquette de thème reste lisible.
+      var y = cible.getBoundingClientRect().top + window.scrollY - 12;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      etat.curseur = +a.dataset.i;
+    }
+  });
+
+  /** La barre n'apparaît qu'une fois la lecture engagée : en haut de page elle
+      n'aurait rien à offrir que la page ne montre déjà. */
+  function majBarre() {
+    if (!barre) return;
+    var enVue = etat.vue === 'jour' && !sommairePanneau.open;
+    var n = enVue ? filtres().length : 0;
+    barre.hidden = !(enVue && n > 1 && window.scrollY > 500);
+    $('#barre-n').textContent = n ? String(n) : '';
+  }
+  window.addEventListener('scroll', majBarre, { passive: true });
+
   var prefs = $('#prefs');
-  $('#prefs-ouvrir').addEventListener('click', function () { rendrePrefs(); prefs.showModal(); });
-  $('#prefs-fermer').addEventListener('click', function () { prefs.close(); });
+  $('#prefs-voix').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-vitesse]');
+    if (b) {
+      reglagesVoix.vitesse = b.dataset.vitesse;
+      LS.ecrire('md.voix', reglagesVoix);
+      rendrePrefsVoix();
+      essaiVoix();
+      return;
+    }
+    if (e.target.closest('#voix-essai')) essaiVoix();
+  });
+  $('#prefs-voix').addEventListener('change', function (e) {
+    if (e.target.id !== 'voix-choix') return;
+    reglagesVoix.voix = e.target.value;
+    LS.ecrire('md.voix', reglagesVoix);
+    essaiVoix();
+  });
+  // Chrome ne remplit getVoices() qu'après un aller-retour : on redessine à l'arrivée.
+  if (PARLE && typeof window.speechSynthesis.addEventListener === 'function') {
+    window.speechSynthesis.addEventListener('voiceschanged', function () {
+      if (prefs && prefs.open) rendrePrefsVoix();
+    });
+  }
+
+  $('#prefs-ouvrir').addEventListener('click', function () { rendrePrefs(); rendrePrefsVoix(); prefs.showModal(); });
+  $('#prefs-fermer').addEventListener('click', function () { arreterLecture(); prefs.close(); });
   $('#prefs-liste').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-pref-theme]');
     if (!b) return;
@@ -828,6 +1240,15 @@
     if (v === 0) delete affinites[t]; else affinites[t] = v;
     LS.ecrire('md.affinites', affinites);
     rendrePrefs(); rafraichir();
+  });
+
+  // Chaque panneau porte une croix : c'est ce qu'on cherche du pouce, en haut
+  // à droite, plutôt qu'en bas après tout le contenu.
+  document.addEventListener('click', function (e) {
+    var x = e.target.closest('.fermer-x');
+    if (!x) return;
+    var d = x.closest('dialog');
+    if (d) { arreterLecture(); d.close(); }
   });
 
   var aide = $('#aide');

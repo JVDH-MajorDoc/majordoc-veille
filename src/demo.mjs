@@ -2,6 +2,8 @@
 // Contenu volontairement fictif : aucun PMID, aucun DOI, aucune référence réelle.
 // Sert uniquement à visualiser le rendu du board avant le premier vrai run.
 
+import { rangRevue } from './rank.mjs';
+
 const A = [
   {
     theme: 'Diabète',
@@ -21,6 +23,7 @@ const A = [
     pour_la_pratique: "Argument de plus pour retarder l'insuline basale chez le DT2 en surpoids sans carence insulinique franche. Attention : aucune donnée cardiovasculaire dure ici, et le coût reste l'obstacle principal en ville. Ne modifie pas encore les recommandations SFD.",
     limites: "Essai ouvert (critère principal biologique, donc impact limité), durée de 52 semaines insuffisante pour les événements cardiovasculaires et rénaux. Financé par le laboratoire promoteur.",
     mots_cles: ['diabète de type 2', 'incrétines', 'insuline basale', 'perte de poids'],
+    resumeSource: '[EXAMPLE ABSTRACT] BACKGROUND: Basal insulin remains the usual intensification step after oral agents fail. METHODS: In this open-label phase 3 trial, 1,842 insulin-naive adults with type 2 diabetes (HbA1c 7.5-11%, BMI at least 25) were randomly assigned 1:1 to a once-weekly incretin co-agonist or titrated glargine U100. The primary endpoint was change in HbA1c at 52 weeks. RESULTS: HbA1c fell by 2.1% with the co-agonist and 1.5% with glargine (difference -0.62; 95% CI -0.74 to -0.50; p<0.001). Body weight changed by -8.4 kg versus +1.9 kg. A target below 7% was reached by 78% versus 51% of participants. Hypoglycaemia below 3.0 mmol/L occurred at 0.9 versus 4.7 events per patient-year. Gastrointestinal events affected 34% versus 6%; 6.1% discontinued for intolerance. CONCLUSIONS: The weekly co-agonist was superior for glycaemic control and weight, with poorer gastrointestinal tolerance.',
   },
   {
     theme: 'Thyroïde',
@@ -40,6 +43,7 @@ const A = [
     pour_la_pratique: "Concrètement : moins de lobectomies diagnostiques pour les Bethesda III de petite taille et EU-TIRADS 3-4. Pensez à documenter le score EU-TIRADS dans le compte rendu, il devient l'élément qui conditionne la conduite à tenir.",
     limites: "Consensus d'experts et non essai comparatif ; le niveau de preuve sous-jacent reste faible pour plusieurs propositions. Applicabilité conditionnée à une échographie de qualité.",
     mots_cles: ['nodule thyroïdien', 'Bethesda', 'EU-TIRADS', 'consensus SFE'],
+    resumeSource: "[EXAMPLE ABSTRACT] Indeterminate cytology accounts for 15 to 25% of thyroid nodule aspirations and exposes patients to diagnostic surgery that proves benign in 70 to 80% of cases. A multidisciplinary SFE working group of 28 experts ran a 3-round Delphi process on 41 propositions, retaining agreement above 80% of concordant votes, supported by a systematic review of the 2015-2025 literature. Ultrasound surveillance at 12 months is proposed first line for Bethesda III without an EU-TIRADS 5 feature (92% agreement). Repeat aspiration is not systematic (85%). Molecular testing is reserved for expert centres given the absence of reimbursement in France (88%). Lobectomy is recommended for Bethesda IV above 2 cm (81%).",
   },
   {
     theme: 'Obésité & nutrition',
@@ -58,6 +62,7 @@ const A = [
     conclusion: "L'arrêt sans relais s'accompagne d'une reprise pondérale majoritaire dès la première année.",
     pour_la_pratique: "À dire au patient avant l'instauration, pas après : le traitement s'inscrit dans une logique chronique. Prévoir un plan de décroissance et un accompagnement diététique si un arrêt est envisagé.",
     limites: "Hétérogénéité forte (I² = 71 %), cohortes majoritairement observationnelles avec perdus de vue importants, pas de données au-delà de 24 mois.",
+    resumeSource: '[EXAMPLE ABSTRACT] OBJECTIVE: To quantify weight regain after discontinuation of GLP-1 receptor agonists. DESIGN: Systematic review and meta-analysis (PROSPERO registered) of 34 cohorts including 12,480 patients who stopped a GLP-1 receptor agonist after at least 6 months of treatment, using random-effects models. The primary outcome was the percentage of lost weight regained at 12 months. RESULTS: Participants regained a mean 62% of lost weight at 12 months (95% CI 55 to 69; I2 = 71%), with 41% regained by month 4. HbA1c returned to pre-treatment values in 68% of participants with diabetes. Structured dietary follow-up attenuated regain by 18 percentage points (95% CI 9 to 27). CONCLUSION: Discontinuation without a relay strategy is followed by majority weight regain within the first year.',
     mots_cles: ['obésité', 'GLP-1', 'reprise pondérale', 'sevrage'],
     verif: { controles: 11, absents: ['18', '9'] },
   },
@@ -258,6 +263,14 @@ export function DIGEST_DEMO(config) {
       liens: { pubmed: null, doi: null, europepmc: null },
       score: 12 - i,
       ...a,
+      // Le badge de revue est calculé comme en production : depuis le config.
+      rangRevue: rangRevue(a, config ?? {}),
+      resumeSource: undefined,
     })),
+    // Trois articles sur dix portent un résumé d'origine : de quoi voir le
+    // dépliant, et de quoi voir qu'il disparaît proprement quand il manque.
+    textesSource: Object.fromEntries(
+      A.map((a, i) => [`demo:${i}`, a.resumeSource]).filter(([, t]) => t)
+    ),
   };
 }

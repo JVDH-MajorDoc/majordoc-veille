@@ -2,7 +2,7 @@
 // ces tests fixent les règles que cet audit a établies.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detecterTheme, typeEtude, scorer, classer, selectionner } from '../src/rank.mjs';
+import { detecterTheme, typeEtude, scorer, classer, selectionner, poidsRevue, rangRevue } from '../src/rank.mjs';
 
 const THEMES = {
   Diabète: ['diabetes', 'metformin', 'hba1c', 'insulin'],
@@ -116,4 +116,59 @@ test('si les quotas laissent court, une seconde passe complète jusqu’au maxim
   const retenus = selectionner(classes, { max: 3, maxParTheme: 1, maxParRevue: 1 });
   assert.equal(retenus.length, 3, 'le board ne se retrouve pas à moitié vide');
   assert.deepEqual(retenus.map((a) => a.titre), ['d1', 'd2', 'd3']);
+});
+
+/* ---------- rang de revue ----------
+   Le badge affiché sur le board et le score doivent lire le même config : deux
+   implémentations divergeraient un jour, comme le vocabulaire puis les thèmes
+   l'ont déjà fait dans ce projet. */
+
+const CONFIG_REVUES = {
+  themes: THEMES,
+  journaux_prioritaires: { 'N Engl J Med': 5, 'Diabetes Care': 4, 'Endocrine': 2.5 },
+  journaux_penalises: { _commentaire: 'note', 'Cureus': -3, 'Front ': -1.5 },
+};
+
+test('le poids d’une revue est celui que le config lui donne', () => {
+  assert.equal(poidsRevue(article({ journal: 'N Engl J Med' }), CONFIG_REVUES).total, 5);
+  assert.equal(poidsRevue(article({ journalAbrege: 'Diabetes Care' }), CONFIG_REVUES).total, 4);
+  assert.equal(poidsRevue(article({ journal: 'Cureus' }), CONFIG_REVUES).total, -3);
+  assert.equal(poidsRevue(article({ journal: 'Revue Inconnue' }), CONFIG_REVUES).total, 0);
+});
+
+test('le badge ne peut pas contredire le score : les deux lisent le même poids', () => {
+  for (const jr of ['N Engl J Med', 'Diabetes Care', 'Endocrine', 'Cureus', 'Frontiers in Endocrinology', 'Revue Inconnue', '']) {
+    const a = article({ journal: jr, journalAbrege: jr, titre: 'Metformin' });
+    const badge = rangRevue(a, CONFIG_REVUES);
+    assert.equal(
+      badge ? badge.poids : 0,
+      scorer(a, CONFIG_REVUES).details.journal,
+      `divergence pour « ${jr} »`
+    );
+  }
+});
+
+test('les seuils du badge suivent la hiérarchie du barème', () => {
+  assert.equal(rangRevue(article({ journal: 'N Engl J Med' }), CONFIG_REVUES).cle, 'reference');
+  assert.equal(rangRevue(article({ journal: 'Diabetes Care' }), CONFIG_REVUES).cle, 'majeure');
+  assert.equal(rangRevue(article({ journal: 'Endocrine' }), CONFIG_REVUES).cle, 'specialite');
+  assert.equal(rangRevue(article({ journal: 'Cureus' }), CONFIG_REVUES).cle, 'large');
+});
+
+test('une revue que le config ignore n’a pas de badge du tout', () => {
+  // Mieux vaut aucune mention qu'une mention creuse sur les trois quarts des fiches.
+  assert.equal(rangRevue(article({ journal: 'Revue Inconnue' }), CONFIG_REVUES), null);
+  assert.equal(rangRevue(article({ journal: '' }), CONFIG_REVUES), null);
+});
+
+test('la clé de documentation d’un bloc n’est jamais prise pour une revue', () => {
+  const config = { themes: THEMES, journaux_prioritaires: { _commentaire: 'note', 'BMJ': 4 } };
+  assert.equal(poidsRevue(article({ journal: 'une note quelconque' }), config).total, 0);
+  assert.equal(poidsRevue(article({ journal: 'BMJ' }), config).total, 4);
+});
+
+test('classer attache le rang de revue à chaque article', () => {
+  const [a] = classer([article({ titre: 'Metformin trial', journal: 'N Engl J Med' })], CONFIG_REVUES);
+  assert.equal(a.rangRevue.cle, 'reference');
+  assert.equal(a.rangRevue.label, 'Revue de référence');
 });

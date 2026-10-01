@@ -17,6 +17,17 @@
       "eur_usd": 0.86
     }
   },
+  "voix": {
+    "commentaire": "Lecture vocale des fiches. Désactivée par défaut : elle demande Piper (synthèse neuronale locale et gratuite) et ffmpeg sur la machine qui génère. Sans eux, ou avec actif=false, le board lit avec la voix du navigateur — correcte sur ordinateur, médiocre sur iPhone, où Safari n'expose pas les voix « Améliorée » d'Apple. Voir INSTALLATION.md, section « Lecture vocale ».",
+    "actif": false,
+    "commande": "piper",
+    "modele": "voix/fr_FR-siwis-medium.onnx",
+    "encodeur": "ffmpeg",
+    "debit": "32k",
+    "silence_phrase": 0.35,
+    "longueur": 1,
+    "retention_jours": 7
+  },
   "sources": [
     {
       "id": "pubmed-hautevaleur",

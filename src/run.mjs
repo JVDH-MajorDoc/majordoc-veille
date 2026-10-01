@@ -19,6 +19,7 @@ import { classer, selectionner } from './rank.mjs';
 import { ficherTous, ficherRecos, redigerEdito, resoudreModele } from './summarize.mjs';
 import { construire, fabriquerDigest, aplatir, aplatirRecos } from './build.mjs';
 import { controler } from './verif.mjs';
+import { synthetiser } from './voix.mjs';
 import { DIGEST_DEMO } from './demo.mjs';
 import { preparerSources, themeOfficiel } from './vocabulaire.mjs';
 
@@ -155,7 +156,23 @@ async function main() {
   console.log(`  Vocabulaire : ${voc.termes} termes cherchés${voc.ecartes.length ? `, ${voc.ecartes.length} écartés comme trop génériques` : ''}\n`);
 
   if (o.demo) {
-    const r = await construire({ racine: RACINE, digest: DIGEST_DEMO(config), sortie: o.sortie, inline: o.inline });
+    const demo = DIGEST_DEMO(config);
+    // La démo fabrique aussi l'audio quand la voix est active : c'est le moyen
+    // d'éprouver Piper et d'entendre le résultat sans dépenser un seul jeton.
+    const siteDemo = o.sortie ?? path.join(RACINE, 'site');
+    await synthetiser({
+      fiches: [
+        ...demo.recos.map((f) => ({ fiche: f, type: 'reco' })),
+        ...demo.articles.map((f) => ({ fiche: f, type: 'article' })),
+      ],
+      dossier: path.join(siteDemo, 'data', 'audio', demo.date),
+      cheminRelatif: `data/audio/${demo.date}`,
+      config, racine: RACINE,
+    });
+    const r = await construire({
+      racine: RACINE, digest: demo, sortie: o.sortie, inline: o.inline,
+      retentionAudio: config.voix?.retention_jours ?? 7,
+    });
     console.log(`  Site de démonstration : ${r.site}`);
     console.log(`  Ouvrir avec : npm run preview\n`);
     return;
@@ -345,16 +362,44 @@ async function main() {
   marquerArticles(registre, resultats.map((r) => r.article));
   await enregistrerRegistre(RACINE, registre);
 
+  // Les résumés d'origine, tels qu'ils ont servi au contrôle des chiffres.
+  // C'est la même matière que `verif.mjs` a comparée à la fiche : la lectrice
+  // peut donc vérifier elle-même ce que l'outil affirme avoir vérifié. Ils
+  // partent dans un fichier voisin (cf. build.mjs), jamais dans le fichier du jour.
+  const textesSource = {};
+  for (const r of resultats) if (r.article?.resume) textesSource[r.article.id] = r.article.resume;
+  for (const r of recos) if (r.element?.resume) textesSource[r.element.id] = r.element.resume;
+
+  const fichesArticles = aplatir(resultats);
+  const fichesRecos = aplatirRecos(recos);
+
+  // Lecture vocale : un MP3 par fiche, s'il y a de quoi les fabriquer. Facultatif,
+  // sans effet de bord — en cas d'absence de Piper le board lira avec la voix du
+  // navigateur, et la veille ne s'interrompt pas pour autant.
+  const site = o.sortie ?? path.join(RACINE, 'site');
+  const jour = new Date().toISOString().slice(0, 10);
+  await synthetiser({
+    fiches: [
+      ...fichesRecos.map((f) => ({ fiche: f, type: 'reco' })),
+      ...fichesArticles.map((f) => ({ fiche: f, type: 'article' })),
+    ],
+    dossier: path.join(site, 'data', 'audio', jour),
+    cheminRelatif: `data/audio/${jour}`,
+    config, racine: RACINE,
+  });
+
   const digest = fabriquerDigest({
-    config, articles: aplatir(resultats), recos: aplatirRecos(recos), edito,
+    config, articles: fichesArticles, recos: fichesRecos, edito,
     sources: journal, sourcesFr: journalFr,
     scannes: articles.length, modele, usage, manquants,
     alerteHeures: config.fraicheur_alerte_heures ?? 48,
+    textesSource,
   });
 
   const r = await construire({
     racine: RACINE, digest, sortie: o.sortie, inline: o.inline,
     conservation: config.jours_conservation ?? 0,
+    retentionAudio: config.voix?.retention_jours ?? 7,
   });
   console.log(`\n  ${resultats.length} fiches${recos.length ? ` · ${recos.length} recommandation${recos.length > 1 ? 's' : ''}` : ''}` +
     `${manquants ? ` · ${manquants} fiche${manquants > 1 ? 's' : ''} NON générée${manquants > 1 ? 's' : ''}` : ''}` +

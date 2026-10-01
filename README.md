@@ -145,8 +145,9 @@ note d'intérêt clinique sur 5 qui détermine l'ordre d'affichage.
 iPhone et iPad, ce qui impose trois contraintes que le rendu de bureau ne révèle
 pas. Un champ de saisie sous 16 px déclenche le zoom automatique d'iOS à la mise
 au point — et la page reste zoomée ensuite : c'est la friction la plus coûteuse
-de toutes. Une cible tactile sous 40 px se rate une fois sur trois quand on
-marche. Et le bandeau étant collant, chaque rangée qu'il occupe est prise au
+de toutes. Une cible tactile sous 44 px se rate une fois sur trois quand on
+marche — et l'interface s'en tient désormais à 44 partout, y compris pour les
+flèches de navigation entre journées, qui n'en faisaient que 30. Et le bandeau étant collant, chaque rangée qu'il occupe est prise au
 texte pour de bon : il en faisait trois sur iPhone, soit un quart de l'écran ;
 il en fait deux, la commande « Tout déplier » se réduisant à son icône. Les
 panneaux tiennent dans la hauteur visible, défilent sans emporter la page, et
@@ -169,6 +170,63 @@ Le réglage est propre au navigateur — à refaire une fois par poste. C'est la
 première marche de la personnalisation ; les suivantes (votes par fiche,
 pondération apprise) demanderont un point d'écriture côté serveur et
 attendent le retour d'usage.
+
+**Le sommaire est accessible depuis n'importe où, sur mobile.** La colonne
+latérale n'existe pas sur un téléphone : la liste des titres y était simplement
+masquée, et il fallait parcourir une douzaine d'écrans pour savoir ce que
+contenait la journée. Une barre apparaît en bas dès que la lecture est engagée —
+là où le pouce se trouve déjà — et ouvre les titres du jour en un geste ; on
+touche un titre, on y est. Le bandeau du haut, lui, cesse de coller : ses sept
+commandes ne servent pas pendant la lecture, et il prenait 117 px à chaque écran.
+
+**Les filtres se replient sur mobile.** Sur un téléphone il n'y a pas de colonne
+latérale : le rail se retrouvait posé en travers, entre l'édito et les fiches, et
+l'on traversait chaque matin une batterie de filtres qu'on n'ouvre qu'une fois de
+temps en temps. Le sélecteur de vue — *Veille du jour* / *Mis de côté* — reste
+visible, c'est de la navigation ; les filtres passent derrière un bouton qui porte
+le nombre de filtres actifs, pour qu'un filtre oublié ne devienne pas invisible.
+Sur ordinateur, rien ne change : la colonne les porte sans rien coûter.
+
+**Le résumé d'origine est consultable.** La fiche annonce que chacun de ses
+chiffres a été comparé au résumé source ; tant que ce résumé restait invisible, il
+fallait croire l'outil sur parole. Un dépliant *Résumé d'origine* au bas de chaque
+fiche montre désormais le texte exact sur lequel le contrôle a porté. Il voyage
+dans un fichier voisin (`data/AAAA-MM-JJ-sources.json`) et n'est chargé qu'à
+l'ouverture : la journée elle-même ne grossit pas d'un octet, et la recherche dans
+les archives — qui télécharge toutes les journées — n'en paie jamais le poids.
+
+**Le barème de tri se lit sur la fiche.** À côté du nom de la revue, une mention
+discrète — *revue de référence*, *majeure*, *de spécialité*, *à large spectre* —
+dit la place que `config.json` donne à cette revue ; l'infobulle en donne le poids
+exact. Ce n'est volontairement pas un facteur d'impact, qui serait une autorité
+extérieure au barème : le board dit ce qu'il sait vraiment, c'est-à-dire ce que
+**ce** cabinet a décidé. Un classement qu'on peut lire est un classement qu'on peut
+contester. Une revue que le config ne mentionne pas n'a pas de mention du tout.
+
+**La fiche se fait lire à voix haute.** Le bouton *Écouter* utilise la synthèse
+vocale du navigateur : aucune dépendance, aucun appel réseau, aucun coût, et ça
+fonctionne hors ligne. Le texte est découpé en phrases et mis en file — un long
+énoncé unique est tronqué au bout d'une quinzaine de secondes par certains
+navigateurs de bureau. Le résumé d'origine est exclu de la lecture : il est en
+anglais, une voix française le rendrait incompréhensible.
+
+**La fiche se fait lire à voix haute — avec une vraie voix, si vous le voulez.**
+Le bouton *Écouter* utilise par défaut la synthèse du navigateur : rien à installer,
+aucun coût. C'est correct sur ordinateur, où Chrome et Firefox exposent de bonnes
+voix ; c'est médiocre sur iPhone, où **Safari ne donne pas accès aux voix
+« Améliorée » et « Premium » d'Apple**, même téléchargées. Un sélecteur de voix et
+de vitesse est disponible dans *Mes réglages*, mais il ne peut pas franchir ce
+plafond-là.
+
+Pour une voix naturelle sur mobile, MajorDoc sait fabriquer un MP3 par fiche à la
+génération, avec [Piper](https://github.com/rhasspy/piper) — synthèse neuronale
+locale, gratuite, qui tourne sur le processeur du serveur et ne parle à personne.
+Le bloc `voix` de `config.json` l'active ; `INSTALLATION.md` donne la procédure.
+Comptez cinq à six mégaoctets par journée : l'audio a donc sa propre rétention,
+sept jours par défaut, là où les fiches sont gardées indéfiniment. Sans Piper, ou
+pour une journée dont l'audio a été purgé, le board retombe sur la voix du
+navigateur — il n'y a rien à configurer pour que ça marche, et rien ne casse si
+ça manque.
 
 **Les échecs de génération ne sont plus silencieux.** Une fiche qui échoue
 (rate limit, réseau) est retentée une fois, en série ; ce qui échoue encore
@@ -347,10 +405,16 @@ src/build.mjs         assemblage du site + archivage
 src/run.mjs           orchestrateur en ligne de commande
 src/preview.mjs       serveur local d'aperçu
 src/theme/            l'interface : index.html, app.css, app.js, fonts/
+src/voix.mjs          lecture vocale : fabrication des MP3 (Piper), purge
+src/auditionner.mjs   planche d'écoute : comparer des voix sur la même phrase
 src/demo.mjs          jeu de données d'exemple
 tests/                tests unitaires (node:test, sans dépendance)
+deploy/mettre-a-jour.sh  mise à jour d'une installation, avec sauvegarde et contrôles
 deploy/               systemd, nginx, envoi FTP/SSH, planification locale
 site/                 généré — le dossier à déposer sur le serveur
+site/data/AAAA-MM-JJ.json          une journée : les fiches
+site/data/AAAA-MM-JJ-sources.json  les résumés d'origine, chargés à la demande
+site/data/audio/AAAA-MM-JJ/        un MP3 par fiche, si la voix est active
 ```
 
 ---
@@ -361,13 +425,16 @@ site/                 généré — le dossier à déposer sur le serveur
 npm test
 ```
 
-Trente-six tests, sans dépendance ni clé API, sur les mécanismes qu'une erreur
+Soixante-trois tests, sans dépendance ni clé API, sur les mécanismes qu'une erreur
 rendrait invisible : le contrôle des chiffres d'une fiche contre son résumé
 source (virgule décimale contre séparateur de milliers, millésimes ignorés,
 pourcentage écrit en fraction), la construction du vocabulaire de recherche
 depuis `config.json`, le classement — le titre décide du thème, le résumé
-départage — les quotas par thème et par revue, et le registre des publications
-déjà fichées. Le même jeu tourne sur Node 18, 20 et 22 à chaque poussée, avec
+départage — les quotas par thème et par revue, le registre des publications
+déjà fichées, la séparation des résumés d'origine d'avec la journée, et la
+lecture vocale — dont le fait qu'une absence de Piper ne doit jamais interrompre
+une veille. Un test vérifie explicitement que le badge de revue ne peut pas
+contredire le score, les deux lisant le même poids. Le même jeu tourne sur Node 18, 20 et 22 à chaque poussée, avec
 le contrôle de syntaxe, `shellcheck` sur les scripts de déploiement et une
 génération de démonstration complète.
 

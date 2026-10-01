@@ -42,7 +42,7 @@
   --surface:      #fffdf9;
   --ink:          #16181a;
   --ink-2:        #454a47;
-  --ink-3:        #676c65;
+  --ink-3:        #595d58;   /* 6,1:1 sur le papier — la source et le pied sont lus à 12,5 px */
   --rule:         #ded9ce;
   --rule-2:       #c6c0b1;
   --prussian:     #16324a;
@@ -65,7 +65,7 @@ html[data-theme='dark'] {
   --surface:      #1a1e22;
   --ink:          #e9e7e1;
   --ink-2:        #b3b8b4;
-  --ink-3:        #8d938e;
+  --ink-3:        #979d98;   /* 6,5:1 — même marge en thème sombre */
   --rule:         #282d31;
   --rule-2:       #3b4247;
   --prussian:     #93bfe0;
@@ -395,7 +395,91 @@ h3.titre button:hover { color: var(--prussian-txt); }
   align-items: center; gap: 8px; font-feature-settings: 'tnum' 1;
 }
 .source .revue { font-style: italic; font-family: var(--serif); font-size: 14px; color: var(--ink-2); }
-.source .libre { color: var(--prussian-txt); border: 1px solid currentColor; border-radius: 2px; padding: 0 5px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.source .libre {
+  color: var(--prussian-txt); border: 1px solid currentColor; border-radius: 2px;
+  padding: 0 5px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.source .libre svg { flex: none; }
+
+/* Le rang de la revue tel que le config du cabinet l'a fixé — l'infobulle porte
+   le poids exact. Discret : c'est un repère, pas un verdict. */
+.source .rang {
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 2px; padding: 0 5px; border: 1px solid transparent; cursor: help;
+}
+.source .rang-reference { color: var(--ochre); border-color: currentColor; font-weight: 600; }
+.source .rang-majeure { color: var(--ochre); border-color: var(--rule-2); }
+.source .rang-specialite { color: var(--ink-3); border-color: var(--rule-2); }
+.source .rang-large { color: var(--ink-3); border-color: transparent; font-style: italic; text-transform: none; letter-spacing: 0; font-size: 11px; }
+
+/* Résumé d'origine : la garantie « chiffres vérifiés » rendue vérifiable.
+   Replié par défaut — la fiche reste ce qu'on lit, la source ce qu'on contrôle. */
+.source-vo { margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 12px; }
+.source-vo > summary {
+  cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--sans); font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-3); min-height: 32px;
+}
+.source-vo > summary::-webkit-details-marker { display: none; }
+.source-vo > summary::before {
+  content: ''; width: 0; height: 0; flex: none;
+  border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  transition: transform var(--t);
+}
+.source-vo[open] > summary::before { transform: rotate(90deg); }
+.source-vo > summary:hover { color: var(--prussian-txt); }
+.source-vo-corps {
+  margin-top: 10px; font-size: 13px; line-height: 1.62; color: var(--ink-2);
+  max-width: var(--mesure); white-space: pre-wrap; overflow-wrap: anywhere;
+  border-left: 2px solid var(--rule-2); padding-left: 14px;
+}
+.source-vo-corps.absent { font-style: italic; color: var(--ink-3); }
+
+.actions .droite button[data-act='ecouter'][aria-pressed='true'] { color: var(--ochre); font-weight: 600; }
+
+/* Réglages : section « Lecture vocale » */
+.prefs .prefs-section {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3); margin: 26px 0 10px; padding-top: 18px; border-top: 1px solid var(--rule);
+}
+.prefs .prefs-section:first-of-type { margin-top: 14px; padding-top: 0; border-top: 0; }
+.prefs-voix select {
+  font: inherit; font-size: 16px;                 /* sous 16px, iOS zoome à la mise au point */
+  max-width: 58%; padding: 7px 9px; min-height: 40px;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule-2); border-radius: 3px;
+}
+.prefs-essai {
+  font: inherit; font-size: 13px; min-height: 40px; padding: 0 14px;
+  color: var(--prussian-txt); background: var(--prussian-soft);
+  border: 1px solid transparent; border-radius: 3px; cursor: pointer;
+}
+.prefs-essai:hover { border-color: currentColor; }
+.prefs-note-voix { margin-top: 14px; }
+.prefs-note-voix code {
+  font-size: .92em; background: var(--prussian-soft); padding: 0 4px; border-radius: 2px;
+}
+
+/* Repli des filtres — invisible sur bureau, où la colonne latérale les porte. */
+.filtres-bascule {
+  display: none; align-items: center; gap: 8px;
+  font: inherit; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); background: none; border: 1px solid var(--rule-2);
+  border-radius: 3px; padding: 7px 12px; cursor: pointer;
+}
+.filtres-bascule:hover { color: var(--prussian-txt); border-color: currentColor; }
+.filtres-bascule .n {
+  font-size: 11px; letter-spacing: 0; text-transform: none;
+  color: var(--paper); background: var(--prussian); border-radius: 9px; padding: 1px 7px;
+}
+.filtres-bascule::after {
+  content: ''; width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid currentColor; transition: transform var(--t);
+}
+.filtres[data-ouvert='true'] .filtres-bascule::after { transform: rotate(180deg); }
+.filtres[data-ouvert='true'] .filtres-liste { margin-top: 12px; }
 
 .actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 15px; font-size: 13px; }
 .actions .lien { display: inline-flex; align-items: center; gap: 4px; color: var(--prussian-txt); text-decoration: none; border-bottom: 1px solid transparent; }
@@ -547,7 +631,17 @@ dialog.archives-panneau { max-width: 560px; width: calc(100vw - 40px); }
   font-feature-settings: 'tnum' 1;
 }
 .archives-jours button[aria-current='true'] .jj { color: var(--prussian-txt); }
-.archives-jours .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le titre est ce qui identifie une journée : le tronquer à la moitié d'une
+   ligne rendait la liste illisible sur téléphone. Deux lignes, et le mois
+   reste visible pendant qu'on parcourt. */
+.archives-jours .tt {
+  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.35;
+}
+.archives-jours .jj { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.archives-jours .jour-nom { color: var(--ink-3); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; font-weight: 400; }
+.archives-mois { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.archives-jours button[aria-current='true'] { background: var(--prussian-soft); }
 .archives-jours .nn { font-size: 11.5px; color: var(--ink-3); font-feature-settings: 'tnum' 1; }
 .archives-vide { color: var(--ink-3); font-size: 13.5px; padding: 20px 0; text-align: center; }
 
@@ -566,6 +660,58 @@ dialog.aide h2 { font-family: var(--serif); font-weight: 550; font-size: 22px; m
 dialog.aide dl { display: grid; grid-template-columns: 64px 1fr; gap: 7px 14px; margin: 18px 0 0; font-size: 13.5px; }
 dialog.aide dd { margin: 0; color: var(--ink-2); }
 dialog.aide .fermer { margin-top: 22px; }
+
+/* La croix : ce qu'on cherche du pouce, en haut à droite. Le bouton du bas
+   reste, pour qui arrive au bout du contenu. */
+.fermer-x {
+  position: absolute; top: 10px; right: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  color: var(--ink-3); background: none; border: 1px solid transparent; cursor: pointer;
+}
+.fermer-x:hover { color: var(--ink); border-color: var(--rule-2); background: var(--paper); }
+dialog.aide h2 { padding-right: 44px; }
+
+/* --- La barre du pouce (mobile) ---------------------------------------------
+   Un bandeau collant en haut coûte sa hauteur à chaque écran, pour des
+   commandes dont aucune ne sert pendant la lecture. Celle-ci ne paraît qu'une
+   fois la lecture engagée, ne porte que ce qui manque vraiment — la liste des
+   titres et le retour en haut — et se trouve là où le pouce est déjà. ------- */
+.barre-pouce { display: none; }
+@media (max-width: 900px) {
+  .barre-pouce {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+    padding: 7px max(14px, env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    border-top: 1px solid var(--rule);
+  }
+  @supports not (background: color-mix(in srgb, red 50%, transparent)) {
+    .barre-pouce { background: var(--surface); }
+  }
+  @supports (backdrop-filter: blur(8px)) { .barre-pouce { backdrop-filter: blur(8px); } }
+  .barre-pouce[hidden] { display: none; }
+  .barre-pouce button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px; font-size: 14px;
+    color: var(--ink-2); background: var(--paper);
+    border: 1px solid var(--rule-2); border-radius: 22px; cursor: pointer;
+  }
+  #barre-sommaire { flex: 1 1 auto; max-width: 260px; }
+  #barre-haut { flex: none; width: 48px; padding: 0; }
+  .barre-pouce .n {
+    font-size: 12px; color: var(--paper); background: var(--prussian);
+    border-radius: 9px; padding: 1px 7px; font-feature-settings: 'tnum' 1;
+  }
+  html[data-theme='dark'] .barre-pouce .n { color: #0d1216; }
+  /* La dernière fiche ne doit pas finir sous la barre. */
+  .page { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+}
+
+/* Le sommaire en panneau : la même liste que la colonne de bureau. */
+.sommaire-panneau-liste { margin-top: 14px; max-height: min(62vh, 560px); overflow-y: auto; }
+.sommaire-panneau-liste .sommaire { margin: 0; }
+.sommaire .fort-point { color: var(--ochre); font-size: 8px; margin-left: 6px; vertical-align: middle; }
 
 /* --- Entrée en scène -------------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
@@ -591,6 +737,15 @@ dialog.aide .fermer { margin-top: 22px; }
   html[data-theme='dark'] .vue[aria-pressed='true'] { color: #0d1216; }
   .rail .filtres { border-top: none; padding-top: 0; }
   .rail .filtres-liste { display: flex; flex-wrap: wrap; gap: 7px; }
+  /* Sur mobile il n'y a pas de colonne latérale : le rail se retrouve posé en
+     travers, entre l'édito et les fiches. On traversait chaque matin une
+     batterie de filtres qu'on n'ouvre qu'une fois de temps en temps — plus de
+     300 px, un tiers d'écran. Elle se replie donc, et le bouton porte le
+     nombre de filtres actifs pour qu'un filtre oublié ne reste pas invisible. */
+  .rail .filtres h2 { display: none; }
+  .filtres-bascule { display: inline-flex; }
+  .filtres[data-ouvert='false'] .filtres-liste { display: none; }
+  .rail .filtres[data-ouvert='false'] { padding-bottom: 0; }
   .filtre { width: auto; border: 1px solid var(--rule-2); border-radius: 3px; padding: 5px 10px; }
   .filtre[aria-pressed='true'] { background: var(--prussian); border-color: var(--prussian); color: var(--paper); }
   html[data-theme='dark'] .filtre[aria-pressed='true'] { color: #0d1216; }
@@ -639,12 +794,19 @@ dialog.aide .fermer { margin-top: 22px; }
    ignore les encoches. -------------------------------------------------- */
 @media (pointer: coarse) {
   .chercher input { font-size: 16px; }                    /* pas de zoom iOS */
-  .ctrl { height: 40px; padding: 0 13px; }
-  .vue, .filtre { min-height: 40px; }
-  .actions button, .actions .lien { min-height: 38px; display: inline-flex; align-items: center; }
-  .archives-jours button { padding: 12px 4px; }
-  .prefs-choix button { padding: 10px 12px; font-size: 13px; }
-  .sommaire a { padding-top: 9px; padding-bottom: 9px; }
+  /* 44 px partout : c'est la règle posée en tête de ce bloc, et les commandes
+     ci-dessous s'en tenaient à 38 ou 40. Les flèches de navigation entre
+     journées, les plus sollicitées au pouce, n'en faisaient que 30 de large. */
+  .ctrl { min-height: 44px; min-width: 44px; padding: 0 13px; }
+  .navjour button { min-height: 44px; min-width: 44px; }
+  .vue, .filtre, .filtres-bascule { min-height: 44px; }
+  .actions button, .actions .lien { min-height: 44px; display: inline-flex; align-items: center; }
+  .compte button { min-height: 44px; display: inline-flex; align-items: center; }
+  .source-vo > summary { min-height: 44px; }
+  .prefs-voix select, .prefs-essai { min-height: 44px; }
+  .archives-jours button { padding: 14px 4px; }
+  .prefs-choix button { min-height: 44px; padding: 10px 12px; font-size: 13px; }
+  .sommaire a { padding-top: 11px; padding-bottom: 11px; }
 }
 
 @media (max-width: 700px) {
@@ -656,17 +818,23 @@ dialog.aide .fermer { margin-top: 22px; }
   }
   .archives-liste { max-height: none; }
   dialog.aide h2 { font-size: 20px; }
-  /* Le bouton de fermeture reste à portée de pouce même après défilement —
-     sur un fond plein, sinon le contenu défile visiblement au travers. */
+  /* Il était collé aux bords, sans coins ni bordures latérales : un filet
+     surmonté d'un mot, que rien ne désignait comme une commande. C'est un
+     bouton, il en a l'aspect — et la croix en haut à droite dispense d'aller
+     le chercher au bas d'un long panneau. */
   dialog.aide .fermer {
-    position: sticky; bottom: calc(-1 * max(22px, env(safe-area-inset-bottom)));
-    width: calc(100% + 40px); margin-left: -20px; margin-right: -20px;
-    justify-content: center; border-radius: 0; border-left: none; border-right: none;
-    border-bottom: none; border-top: 1px solid var(--rule-2);
-    background: var(--surface); height: 46px;
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    width: 100%; height: 48px; justify-content: center;
+    margin-top: 26px; border-radius: 6px;
+    background: var(--prussian); border-color: var(--prussian); color: var(--paper);
+    font-size: 15px; font-weight: 550;
   }
+  html[data-theme='dark'] dialog.aide .fermer { color: #0d1216; }
+  .fermer-x { top: 8px; right: 8px; width: 44px; height: 44px; border-color: var(--rule-2); }
   .masthead-in { padding-top: 10px; padding-bottom: 10px; }
+  /* Deux rangées collantes, 117 px pris au texte à chaque écran, pour des
+     commandes dont aucune ne sert pendant la lecture : le bandeau défile avec
+     la page, et la barre du pouce porte ce qui doit rester joignable. */
+  .masthead { position: static; }
   .une h1 { font-size: clamp(30px, 8.5vw, 46px); }
   .retrait-sep { margin-top: 26px; }
 }

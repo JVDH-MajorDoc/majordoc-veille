@@ -75,6 +75,62 @@ export function typeEtude(article) {
   return 'Article original';
 }
 
+/**
+ * Poids de la revue dans le barème, isolé pour une raison : le badge affiché sur
+ * le board doit dire exactement ce que le score a calculé. Deux implémentations
+ * divergeraient un jour — c'est déjà arrivé deux fois dans ce projet, avec le
+ * vocabulaire puis avec la liste des thèmes.
+ *
+ * La clé « _commentaire » d'un bloc est de la documentation, pas une revue.
+ *
+ * @returns {{bonus:number, malus:number, total:number}}
+ */
+export function poidsRevue(article, config) {
+  const j = norm(article.journal);
+  const ja = norm(article.journalAbrege);
+  const correspond = (cle) => {
+    const k = norm(cle);
+    return j === k || ja === k || j.includes(k) || ja.includes(k);
+  };
+
+  let bonus = 0;
+  for (const [cle, val] of Object.entries(config.journaux_prioritaires ?? {})) {
+    if (cle.startsWith('_') || typeof val !== 'number') continue;
+    if (correspond(cle)) bonus = Math.max(bonus, val);
+  }
+  // Symétrique du bonus : certaines revues à très gros volume trustent les
+  // places sans apporter de quoi changer une consultation.
+  let malus = 0;
+  for (const [cle, val] of Object.entries(config.journaux_penalises ?? {})) {
+    if (cle.startsWith('_') || typeof val !== 'number') continue;
+    if (correspond(cle)) malus = Math.min(malus, val);
+  }
+  return { bonus, malus, total: bonus + malus };
+}
+
+/**
+ * Traduit ce poids en une mention lisible sur la fiche.
+ *
+ * Juisci affiche un facteur d'impact et une note en lettre ; ce serait ici une
+ * donnée de plus à aller chercher, et surtout une autorité extérieure au barème.
+ * Le board dit donc ce qu'il sait vraiment : la place que CE cabinet a donnée à
+ * CETTE revue dans son `config.json`. Un barème qu'on peut lire est un barème
+ * qu'on peut contester — c'est tout l'intérêt.
+ *
+ * Renvoie null pour une revue que le config ne mentionne pas : mieux vaut pas de
+ * mention qu'une mention creuse sur les trois quarts des fiches.
+ *
+ * @returns {{cle:string, label:string, poids:number}|null}
+ */
+export function rangRevue(article, config) {
+  const { total } = poidsRevue(article, config);
+  if (total >= 4.5) return { cle: 'reference', label: 'Revue de référence', poids: total };
+  if (total >= 3.5) return { cle: 'majeure', label: 'Revue majeure', poids: total };
+  if (total > 0) return { cle: 'specialite', label: 'Revue de spécialité', poids: total };
+  if (total < 0) return { cle: 'large', label: 'Revue à large spectre', poids: total };
+  return null;
+}
+
 export function scorer(article, config) {
   let score = 0;
   const details = {};
@@ -101,24 +157,7 @@ export function scorer(article, config) {
   score += bonusType;
 
   // 4. Journal
-  let bonusJournal = 0;
-  const j = norm(article.journal);
-  const ja = norm(article.journalAbrege);
-  for (const [cle, val] of Object.entries(config.journaux_prioritaires ?? {})) {
-    const k = norm(cle);
-    if (j === k || ja === k || j.includes(k) || ja.includes(k)) bonusJournal = Math.max(bonusJournal, val);
-  }
-  // Symétrique du bonus : certaines revues à très gros volume trustent les
-  // places sans apporter de quoi changer une consultation. La clé « _commentaire »
-  // du bloc est de la documentation, pas une revue — on l'ignore.
-  let malusJournal = 0;
-  for (const [cle, val] of Object.entries(config.journaux_penalises ?? {})) {
-    if (cle.startsWith('_') || typeof val !== 'number') continue;
-    const k = norm(cle);
-    if (j === k || ja === k || j.includes(k) || ja.includes(k)) malusJournal = Math.min(malusJournal, val);
-  }
-
-  details.journal = bonusJournal + malusJournal;
+  details.journal = poidsRevue(article, config).total;
   score += details.journal;
 
   // 5. Fraîcheur (0 à 2 pts, décroît sur la fenêtre)
@@ -175,6 +214,7 @@ export function classer(articles, config) {
       scoreDetails: details,
       theme: detecterTheme(a, config.themes ?? {}),
       typeEtude: typeEtude(a),
+      rangRevue: rangRevue(a, config),
     };
   });
 
