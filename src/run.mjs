@@ -20,6 +20,7 @@ import { ficherTous, ficherRecos, redigerEdito, resoudreModele } from './summari
 import { construire, fabriquerDigest, aplatir, aplatirRecos } from './build.mjs';
 import { controler } from './verif.mjs';
 import { synthetiser } from './voix.mjs';
+import { notifierEdito } from './notifier.mjs';
 import { DIGEST_DEMO } from './demo.mjs';
 import { preparerSources, themeOfficiel } from './vocabulaire.mjs';
 
@@ -414,6 +415,13 @@ async function main() {
     ` · ${usage.entree + usage.sortie} tokens · ${chrono()}`);
   console.log(`  Site à jour : ${r.site}  (${r.jours} journée${r.jours > 1 ? 's' : ''} en ligne)`);
   if (r.inline) console.log(`  Fichier autonome : ${r.inline}`);
+
+  // La veille est en ligne : on peut l'annoncer. Pas d'édito, pas de
+  // notification — un matin sans nouveauté n'a pas à faire vibrer un téléphone.
+  await notifierEdito({
+    adresse: process.env.NOTIF_NTFY, url: process.env.MAJORDOC_URL || null,
+    edito, nbArticles: resultats.length, nbRecos: recos.length,
+  });
   console.log('');
 }
 
