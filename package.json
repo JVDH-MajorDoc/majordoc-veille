@@ -27,6 +27,7 @@
     "autonome": "node src/run.mjs --inline",
     "flux": "node src/decouvrir.mjs",
     "diag": "node src/diagnostic.mjs",
+    "diag-ia": "node src/diag-ia.mjs",
     "test": "node --test tests/*.test.mjs"
   }
 }

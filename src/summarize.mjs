@@ -36,7 +36,10 @@ async function appel(chemin, body, { essais = 3, betas = [] } = {}) {
       });
       if (r.status === 429 || r.status >= 500) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
-      if (!r.ok) throw Object.assign(new Error(data?.error?.message ?? `HTTP ${r.status}`), { fatal: r.status < 500 && r.status !== 429 });
+      if (!r.ok) {
+        throw Object.assign(new Error(`HTTP ${r.status} — ${data?.error?.message ?? 'sans détail'}`),
+          { fatal: r.status < 500 && r.status !== 429, status: r.status });
+      }
       return data;
     } catch (e) {
       derniereErreur = e;
@@ -181,11 +184,33 @@ export function lireJson(data) {
   }
 }
 
+/** Appel brut à l'API, pour l'outil de diagnostic (src/diag-ia.mjs). */
+export const appelAPI = appel;
+
+/**
+ * Le repli sur refus est une fonction beta : si l'API la rejette (requête
+ * invalide), on la retire pour le reste de l'exécution plutôt que de perdre
+ * toutes les fiches du jour. Un avertissement le dit dans le journal.
+ */
+let repliRejete = false;
+
 async function rediger(params) {
-  const { repli = 'default' } = params;
-  const data = await appel('/messages', corpsRequete(params), {
-    betas: repli ? ['server-side-fallback-2026-07-01'] : [],
+  const repli = repliRejete ? null : (params.repli === undefined ? 'default' : params.repli);
+  const envoyer = (r) => appel('/messages', corpsRequete({ ...params, repli: r }), {
+    betas: r ? ['server-side-fallback-2026-07-01'] : [],
   });
+  let data;
+  try {
+    data = await envoyer(repli);
+  } catch (e) {
+    if (!repli || e.status !== 400) throw e;
+    data = await envoyer(null);
+    if (!repliRejete) {
+      repliRejete = true;
+      console.warn(`  ! Repli sur refus rejeté par l'API (${e.message}) — désactivé pour cette exécution.` +
+        ' Mettez anthropic.repli_refus à null dans config.json.');
+    }
+  }
   return { sortie: decoderEchappements(lireJson(data)), usage: data.usage ?? {} };
 }
 
@@ -239,6 +264,9 @@ const SCHEMA_FICHE = {
     'interet',
   ],
 };
+
+/** Le schéma de fiche tel qu'il part à l'API, pour l'outil de diagnostic. */
+export function schemaFiche(themes) { return avecThemes(SCHEMA_FICHE, themes); }
 
 const SYSTEME = `Tu es un endocrinologue-diabétologue français, lecteur critique aguerri, qui prépare la revue de presse quotidienne de ses confrères.
 

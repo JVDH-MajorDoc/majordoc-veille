@@ -123,18 +123,28 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
  * articles concernés ne sont pas marqués au registre : ils se représenteront
  * d'eux-mêmes au passage suivant.
  */
+/** Les raisons d'échec, regroupées : quinze fois la même ligne ne dit rien de plus. */
+function direRaisons(rates) {
+  const n = new Map();
+  for (const r of rates) n.set(r.erreur, (n.get(r.erreur) ?? 0) + 1);
+  for (const [raison, k] of n) console.warn(`    Raison${k > 1 ? ` (${k} fiches)` : ''} : ${raison}`);
+}
+
 async function avecReprise(faire, elements, options) {
   const premier = await faire(elements, options);
   let ok = premier.filter((r) => !r.erreur);
   let rates = premier.filter((r) => r.erreur);
   if (rates.length) {
-    console.log(`\n  ${rates.length} fiche(s) en échec — seconde tentative, en série…`);
+    console.log(`\n  ${rates.length} fiche(s) en échec :`);
+    direRaisons(rates);
+    console.log('  Seconde tentative, en série…');
     const seconde = await faire(rates.map((r) => r.article ?? r.element), { ...options, concurrence: 1 });
     ok = ok.concat(seconde.filter((r) => !r.erreur));
     rates = seconde.filter((r) => r.erreur);
     for (const r of rates) {
       console.warn(`  ✗ définitivement en échec : ${String((r.article ?? r.element)?.titre ?? '?').slice(0, 84)}`);
     }
+    if (rates.length) direRaisons(rates);
   }
   return { ok, rates };
 }

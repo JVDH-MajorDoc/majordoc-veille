@@ -130,3 +130,39 @@ test('corpsRequete n’ajoute rien que Sonnet 5.5 refuse', () => {
   const c = corpsRequete({ modele: 'claude-sonnet-5-5', maxTokens: 8000, systeme: 's', schema: { type: 'object' }, contenu: 'x' });
   assert.deepEqual(Object.keys(c).sort(), ['fallbacks', 'max_tokens', 'messages', 'model', 'output_config', 'system']);
 });
+
+test('l’erreur de l’API garde son code et son message', async (t) => {
+  fauxFetch(t, { error: { message: 'output_config.format: schema invalide' } }, 400);
+  await assert.rejects(
+    ficher(article, { modele: 'claude-sonnet-5-5', repli: null }),
+    (e) => e.status === 400 && /HTTP 400 — output_config\.format: schema invalide/.test(e.message)
+  );
+});
+
+// En dernier : ce test désactive le repli pour le reste du module.
+test('si l’API rejette le repli sur refus, la fiche est redemandée sans lui', async (t) => {
+  const envois = [];
+  const avant = globalThis.fetch;
+  process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
+  globalThis.fetch = async (url, init) => {
+    const corps = JSON.parse(init.body);
+    envois.push(corps);
+    return corps.fallbacks
+      ? { status: 400, ok: false, json: async () => ({ error: { message: 'fallbacks: not supported' } }) }
+      : { status: 200, ok: true, json: async () => reponseJson(ficheModele) };
+  };
+  const avertir = console.warn; const avertissements = [];
+  console.warn = (m) => avertissements.push(m);
+  t.after(() => { globalThis.fetch = avant; console.warn = avertir; });
+
+  const { fiche } = await ficher(article, { modele: 'claude-sonnet-5-5' });
+  assert.equal(fiche.titre_fr, ficheModele.titre_fr);
+  assert.equal(envois.length, 2);
+  assert.equal(envois[1].fallbacks, undefined);
+  assert.match(avertissements[0], /Repli sur refus rejeté/);
+
+  // Les fiches suivantes partent directement sans repli : une requête, pas deux.
+  await ficher(article, { modele: 'claude-sonnet-5-5' });
+  assert.equal(envois.length, 3);
+  assert.equal(avertissements.length, 1);
+});

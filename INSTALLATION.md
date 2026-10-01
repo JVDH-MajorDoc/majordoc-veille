@@ -494,6 +494,14 @@ Le dossier `site/data/` contient l'historique des journées publiées.
 
 ## 14. Dépannage
 
+**Toutes les fiches en échec (✗)**
+La raison s'affiche sous la liste (« Raison (15 fiches) : HTTP 400 — … »). Pour
+savoir précisément ce que l'API refuse :
+`cd /opt/majordoc && sudo -u majordoc -g majordoc node src/diag-ia.mjs`. Quatre
+essais, chacun ajoutant un élément au précédent (clé et modèle, effort, fiche
+structurée, repli sur refus) : le premier en échec désigne la cause, avec le
+message exact de l'API. Coût : quelques centimes.
+
 **« Clé API manquante »**
 Le fichier `.env` n'est pas lu. Vérifier qu'il existe, qu'il appartient à `majordoc`
 et qu'il ne contient pas de guillemets autour de la clé :
