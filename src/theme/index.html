@@ -111,6 +111,21 @@
   <button class="fermer-x" type="button" aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
   <h2 id="prefs-titre">Mes réglages</h2>
 
+  <h3 class="prefs-section">Affichage</h3>
+  <div class="prefs-ligne">
+    <span class="prefs-theme"><span class="prefs-nom">Thème</span>
+      <span class="prefs-n">Auto : suit l'appareil</span></span>
+    <span class="prefs-choix" id="prefs-theme" role="group" aria-label="Thème d'affichage">
+      <button type="button" data-theme-pref="auto">Auto</button>
+      <button type="button" data-theme-pref="light">Clair</button>
+      <button type="button" data-theme-pref="dark">Sombre</button>
+    </span>
+  </div>
+  <div class="prefs-ligne">
+    <span class="prefs-theme"><span class="prefs-nom">Mode d'emploi</span></span>
+    <button type="button" class="prefs-essai" id="prefs-aide">Comment ça marche</button>
+  </div>
+
   <h3 class="prefs-section">Mes thèmes</h3>
   <p class="prefs-intro">
     <b>Suivi de près</b> ouvre votre board. <b>En retrait</b> descend en fin de page,
@@ -137,7 +152,8 @@
     le premier est celui à lire si vous n'en lisez qu'un.
   </p>
   <p style="color: var(--ink-2); margin: 14px 0 0; font-size: 14px;">
-    Le bouton à curseurs, en haut, ouvre <b>Mes thèmes</b> : chacun y règle son ordre de
+    Le bouton à curseurs, en haut, ouvre <b>Mes réglages</b> (thème clair ou sombre,
+    lecture vocale, et <b>Mes thèmes</b>) : chacun y règle son ordre de
     lecture — les thèmes suivis de près en tête, ceux qui ne relèvent pas de sa pratique
     en retrait. Le <b>signet</b> sous chaque fiche la range dans <b>Mis de côté</b>, dans la colonne de gauche.
     Son contenu y est recopié : elle reste lisible même quand sa journée s'éloigne.
@@ -167,7 +183,8 @@
     (<b>revue de référence</b>, <b>majeure</b>, <b>de spécialité</b>, <b>à large spectre</b>)
     indique la place que le cabinet a donnée à cette revue dans son barème de tri ;
     l'infobulle en donne le poids exact. Le bouton <b>Écouter</b> fait lire la fiche
-    à voix haute par le navigateur — utile entre deux consultations, ou en voiture.
+    à voix haute par le navigateur — utile entre deux consultations, ou en voiture ;
+    <b>Partager</b> l'envoie à une consœur (Messages, WhatsApp, Mail).
   </p>
   <p style="color: var(--ink-3); font-size: 12.5px; margin-top: 18px;">
     Les fiches sont rédigées à partir des résumés publiés. Elles servent à décider quoi lire —

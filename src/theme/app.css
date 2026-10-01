@@ -197,7 +197,7 @@ html[data-theme='dark'] .verif-pastille { color: #221a08; }
   font-size: clamp(2.15rem, 1.3rem + 2.6vw, 3.25rem); line-height: 1.09; letter-spacing: -.022em;
   margin: 16px 0 0; max-width: 19ch; text-wrap: balance;
 }
-.une .chapo { display: grid; grid-template-columns: 1fr; gap: 0; margin-top: 26px; max-width: var(--mesure); }
+.une .chapo { display: grid; grid-template-columns: 1fr; gap: 0; margin: 26px 0 0; padding: 0; max-width: var(--mesure); }
 .une .chapo li {
   list-style: none; padding: 9px 0 9px 22px; position: relative;
   color: var(--ink-2); font-size: 15.5px; border-top: 1px solid var(--rule);
@@ -214,6 +214,21 @@ html[data-theme='dark'] .verif-pastille { color: #221a08; }
 .une .priorite b { color: var(--ink); font-weight: 600; }
 
 .jauges { display: flex; gap: 34px; flex-wrap: wrap; margin-top: 30px; }
+
+/* Écran large : l'édito à gauche, l'encadré et les compteurs à droite. Empilés,
+   ils occupaient tout le premier écran d'un 1440 × 1000 et aucune fiche
+   n'apparaissait avant de faire défiler. */
+@media (min-width: 1081px) {
+  .une {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
+    column-gap: 64px; align-items: start; padding-top: 40px; padding-bottom: 32px;
+  }
+  .une > .date, .une > h1, .une > .chapo { grid-column: 1; }
+  .une-cote { grid-column: 2; grid-row: 1 / span 3; padding-top: 28px; }
+  .une-cote .priorite { margin-top: 0; }
+  .une-cote .jauges { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 24px; margin-top: 26px; }
+  .une-cote .jauge .v { font-size: 27px; }
+}
 .jauge .v {
   font-family: var(--serif); font-size: 30px; font-weight: 500; line-height: 1;
   font-feature-settings: 'tnum' 1; letter-spacing: -.02em;
@@ -720,6 +735,17 @@ dialog.aide h2 { padding-right: 44px; }
 }
 
 /* --- Adaptatif -------------------------------------------------------------- */
+/* iPad à l'horizontale : la spécialité s'empilait sur trois lignes et la
+   recherche se réduisait à « Recherc ». Le nom suffit à l'identité ; la
+   commande « Tout déplier » se contente de son icône. */
+@media (max-width: 1180px) {
+  .wordmark .spe { display: none; }
+}
+@media (min-width: 901px) and (max-width: 1080px) {
+  #tout span { display: none; }
+  #tout .ico { display: block; }
+  .chercher { flex: 1 1 140px; width: auto; max-width: 260px; }
+}
 @media (max-width: 1080px) {
   :root { --gouttiere: 34px; --rail: 200px; }
   .page, .masthead-in { padding-left: 24px; padding-right: 24px; }
@@ -775,11 +801,20 @@ dialog.aide h2 { padding-right: 44px; }
      recherche et aux quatre commandes de tenir sur une seule rangée. */
   #tout { order: 4; padding: 0 12px; }
   #tout span { display: none; }
-  #theme { order: 5; }
   #prefs-ouvrir { order: 6; }
-  #aide-ouvrir { order: 7; }
-  .une { padding: 34px 0 28px; }
-  .jauges { gap: 22px; }
+  /* Thème et aide passent dans « Mes réglages » : à six commandes, la rangée
+     débordait sur iPhone — « ? » tombait seul sur une troisième ligne et la
+     recherche se réduisait à « Recherc ». Le saut de ligne forcé garde
+     identité et date en haut, recherche et commandes en dessous, même les
+     jours où il n'y a pas encore de navigation entre journées. */
+  #theme, #aide-ouvrir { display: none; }
+  .masthead-in { row-gap: 4px; }
+  .masthead-in::before { content: ''; order: 3; flex-basis: 100%; height: 0; }
+  .une { padding: 30px 0 26px; }
+  /* Six compteurs en ligne faisaient trois rangées de hauteur inégale. */
+  .jauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 12px; margin-top: 24px; }
+  .jauge .v { font-size: 24px; }
+  .jauge .l { font-size: 9.5px; letter-spacing: .1em; }
   .fiche .bloc { grid-template-columns: 1fr; gap: 3px; }
   .fiche .bloc dt { padding-top: 0; }
 }
@@ -794,6 +829,8 @@ dialog.aide h2 { padding-right: 44px; }
    ignore les encoches. -------------------------------------------------- */
 @media (pointer: coarse) {
   .chercher input { font-size: 16px; }                    /* pas de zoom iOS */
+  /* Les raccourcis clavier n'ont rien à faire sur un écran tactile. */
+  #aide dl { display: none; }
   /* 44 px partout : c'est la règle posée en tête de ce bloc, et les commandes
      ci-dessous s'en tenaient à 38 ou 40. Les flèches de navigation entre
      journées, les plus sollicitées au pouce, n'en faisaient que 30 de large. */

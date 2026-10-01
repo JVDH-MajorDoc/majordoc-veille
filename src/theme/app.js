@@ -19,6 +19,7 @@
     cercle: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
     chevron: '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     haut: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8.5 2.5L5 5.5H2.5v5H5l3.5 3z" fill="currentColor"/><path d="M11.2 5.6a3.6 3.6 0 0 1 0 4.8M13 3.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    partager: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8 10V2M5 4.8L8 1.8l3 3M4.5 7H3.5v7h9V7h-1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     stop: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.4" fill="currentColor"/></svg>',
     cadenasOuvert: '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
   };
@@ -114,6 +115,9 @@
       p === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : p;
     $('#theme').innerHTML = p === 'light' ? ICONES.clair : p === 'dark' ? ICONES.sombre : ICONES.auto;
     $('#theme').title = 'Thème : ' + (p === 'auto' ? 'automatique' : p === 'light' ? 'clair' : 'sombre');
+    [].forEach.call(document.querySelectorAll('#prefs-theme button'), function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.themePref === p));
+    });
     LS.ecrire('md.theme', p);
   }
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
@@ -121,6 +125,13 @@
   });
   $('#theme').addEventListener('click', function () {
     prefTheme = prefTheme === 'auto' ? 'light' : prefTheme === 'light' ? 'dark' : 'auto';
+    appliquerTheme(prefTheme);
+  });
+  // Sur iPhone, le bouton du bandeau cède sa place : le thème se règle ici.
+  $('#prefs-theme').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-theme-pref]');
+    if (!b) return;
+    prefTheme = b.dataset.themePref;
     appliquerTheme(prefTheme);
   });
 
@@ -231,6 +242,10 @@
       '<ul class="chapo anim" style="animation-delay:.06s">' +
         (e.points || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') +
       '</ul>' +
+      // L'encadré et les compteurs vont dans une colonne à part : sur un écran
+      // large, elle se range à droite de l'édito au lieu de pousser les
+      // premières fiches sous la ligne de flottaison.
+      '<div class="une-cote">' +
       (e.a_lire_en_priorite
         ? '<p class="priorite anim" style="animation-delay:.12s">À lire en priorité — <b>' + esc(e.a_lire_en_priorite) + '</b></p>'
         : '') +
@@ -241,7 +256,7 @@
         jauge(nbLus + ' / ' + tout.length, 'lus', 'lu') +
         jauge('~' + minutes + ' min', 'de lecture') +
         (j.scannes ? jauge(j.scannes, 'articles parcourus') : '') +
-      '</div>';
+      '</div></div>';
   }
   /**
    * Une panne du timer ne se voit pas : le board affiche simplement une vieille
@@ -557,6 +572,45 @@
       : '';
   }
 
+  /* ---------- partager une fiche ----------
+     Sur iPhone, la feuille de partage d'iOS (Messages, WhatsApp, Mail…) :
+     c'est ainsi qu'une fiche passe d'une consœur à l'autre. Ailleurs, le texte
+     est copié. Le message dit d'où il vient : une fiche rédigée
+     automatiquement ne doit pas circuler comme une lecture faite par quelqu'un. */
+  var PARTAGE = !!(navigator.share || (navigator.clipboard && navigator.clipboard.writeText));
+  function boutonPartager() {
+    return PARTAGE ? '<button type="button" data-act="partager">' + ICONES.partager + ' <span>Partager</span></button>' : '';
+  }
+  function textePartage(x, estReco) {
+    var lien = estReco ? lienSur(x.lien)
+      : lienSur(x.liens && x.liens.doi) || lienSur(x.liens && x.liens.pubmed) || lienSur(x.liens && x.liens.europepmc);
+    var source = estReco ? (x.organisme || '') : (x.journal || x.journalAbrege || '');
+    return {
+      title: (estReco ? x.titre_court || x.titreOriginal : x.titre_fr || x.titre) || 'Fiche MajorDoc',
+      text: [
+        (estReco ? x.titre_court || x.titreOriginal : x.titre_fr || x.titre) + (source ? ' (' + source + ')' : ''),
+        x.accroche || '',
+        estReco && x.ce_qui_change ? 'Ce qui change : ' + x.ce_qui_change : '',
+        '— Fiche MajorDoc, rédigée automatiquement à partir du résumé publié.'
+      ].filter(Boolean).join('\n\n'),
+      url: lien || undefined
+    };
+  }
+  function partager(bloc) {
+    var id = bloc.dataset.id, estReco = bloc.classList.contains('reco');
+    var x = (estReco ? recos() : articles()).concat(objetsGardes()).filter(function (y) { return y.id === id; })[0];
+    if (!x) return;
+    var d = textePartage(x, estReco);
+    if (navigator.share) {
+      navigator.share(d).catch(function () { /* partage annulé : rien à dire */ });
+      return;
+    }
+    navigator.clipboard.writeText(d.text + (d.url ? '\n' + d.url : '')).then(
+      function () { signaler('Fiche copiée — prête à coller dans un message'); },
+      function () { signaler('Copie impossible dans ce navigateur'); }
+    );
+  }
+
   window.addEventListener('beforeunload', arreterLecture);
   window.addEventListener('pagehide', arreterLecture);
 
@@ -595,7 +649,7 @@
         '<button class="deplier" type="button" data-role="basculer"><span class="fleche">' + ICONES.chevron + '</span><span>Fiche de lecture</span></button>' +
         liens.join('') +
         '<span class="droite">' +
-          boutonEcouter() +
+          boutonEcouter() + boutonPartager() +
           '<button type="button" data-act="garde" aria-pressed="' + estGarde(a.id) + '">' +
             (estGarde(a.id) ? ICONES.marqueOn + ' Gardé' : ICONES.marque + ' Garder') + '</button>' +
           '<button type="button" data-act="lu" aria-pressed="' + lus.has(a.id) + '">' +
@@ -679,7 +733,7 @@
         '<button class="deplier" type="button" data-role="basculer"><span class="fleche">' + ICONES.chevron + '</span><span>Détail</span></button>' +
         (lienSur(r.lien) ? '<a class="lien" href="' + esc(r.lien) + '" target="_blank" rel="noopener">Texte de référence ↗</a>' : '') +
         '<span class="droite">' +
-          boutonEcouter() +
+          boutonEcouter() + boutonPartager() +
           '<button type="button" data-act="garde" aria-pressed="' + estGarde(r.id) + '">' +
             (estGarde(r.id) ? ICONES.marqueOn + ' Gardé' : ICONES.marque + ' Garder') + '</button>' +
           '<button type="button" data-act="lu" aria-pressed="' + lus.has(r.id) + '">' +
@@ -984,6 +1038,7 @@
       // Volontairement avant tout le reste, et sans rafraîchir : un rendu
       // reconstruirait la carte et ferait disparaître le bouton en cours.
       if (act.dataset.act === 'ecouter') { lire(bloc); return; }
+      if (act.dataset.act === 'partager') { partager(bloc); return; }
       if (act.dataset.act === 'lu') {
         lus.has(id) ? lus.delete(id) : lus.add(id);
         LS.ecrire('md.lus', Array.from(lus));
@@ -1253,6 +1308,7 @@
 
   var aide = $('#aide');
   $('#aide-ouvrir').addEventListener('click', function () { aide.showModal(); });
+  $('#prefs-aide').addEventListener('click', function () { arreterLecture(); prefs.close(); aide.showModal(); });
   $('#aide-fermer').addEventListener('click', function () { aide.close(); });
 
   /* ---------- clavier ---------- */
