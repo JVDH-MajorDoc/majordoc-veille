@@ -55,13 +55,23 @@ chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
 echo "     config.json, .env et data/ n'ont pas été touchés."
 
 dire "4/6  Réglages nouveaux dans l'archive"
-# Les clés de premier niveau présentes dans l'exemple et absentes du config en
-# place : c'est là que se cachent les fonctions qu'on croit installées et qui
-# dorment, faute d'avoir été activées.
+# Les clés présentes dans l'exemple et absentes du config en place : c'est là
+# que se cachent les fonctions qu'on croit installées et qui dorment, faute
+# d'avoir été activées. On descend dans les blocs de réglages (anthropic,
+# voix…), pas dans les listes que le cabinet a composées lui-même (thèmes,
+# revues, pénalités) : leurs clés sont des noms, pas des réglages, et un thème
+# retiré exprès ne doit pas revenir à chaque mise à jour comme une nouveauté.
 NOUVEAUX="$(node -e '
-const a = require(process.argv[1]), b = require(process.argv[2]);
-const m = Object.keys(a).filter((k) => !(k in b));
-console.log(m.join(" "));
+const reglage = (o) => o && typeof o === "object" && !Array.isArray(o) &&
+  Object.keys(o).every((k) => /^_?[a-z][a-z0-9_]*$/.test(k));
+const manquants = (a, b, chemin = "") => Object.keys(a)
+  .filter((k) => !/^_?commentaire$/.test(k))
+  .flatMap((k) => {
+    const ici = chemin ? `${chemin}.${k}` : k;
+    if (!b || !(k in b)) return [ici];
+    return reglage(a[k]) && reglage(b[k]) ? manquants(a[k], b[k], ici) : [];
+  });
+console.log(manquants(require(process.argv[1]), require(process.argv[2])).join(" "));
 ' "$SOURCE/config.json" "$CIBLE/config.json" 2>/dev/null || true)"
 if [ -n "$NOUVEAUX" ]; then
   echo "     À reporter dans $CIBLE/config.json : $NOUVEAUX"
@@ -79,6 +89,13 @@ if (a.model && b.model !== a.model) console.log(`${b.model ?? "(absent)"} → ${
 if [ -n "$MODELE" ]; then
   echo "     Modèle à mettre à jour dans $CIBLE/config.json : $MODELE"
   echo "     Reportez tout le bloc « anthropic » de $SOURCE/config.json (modèle, effort, max_tokens, tarif)."
+fi
+
+# La configuration nginx vit hors de l'installation : on ne la touche pas,
+# mais on signale qu'elle a une version plus récente à reprendre.
+if [ -d /etc/nginx ] && [ ! -f /etc/nginx/snippets/majordoc-securite.conf ]; then
+  echo "     nginx : configuration à reprendre (en-têtes de sécurité, audio sur iPhone)."
+  echo "     Marche à suivre : INSTALLATION.md, section 15, « Configuration nginx »."
 fi
 
 dire "5/6  Contrôles"

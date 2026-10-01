@@ -149,7 +149,9 @@ de toutes. Une cible tactile sous 44 px se rate une fois sur trois quand on
 marche — et l'interface s'en tient désormais à 44 partout, y compris pour les
 flèches de navigation entre journées, qui n'en faisaient que 30. Et le bandeau étant collant, chaque rangée qu'il occupe est prise au
 texte pour de bon : il en faisait trois sur iPhone, soit un quart de l'écran ;
-il en fait deux, la commande « Tout déplier » se réduisant à son icône. Les
+il en fait deux — identité et date en haut, recherche et deux commandes en
+dessous —, le thème clair/sombre et le mode d'emploi passant dans « Mes
+réglages ». Les
 panneaux tiennent dans la hauteur visible, défilent sans emporter la page, et
 leur bouton de fermeture reste sous le pouce. Ces réglages ont été vérifiés à la
 main sur iPhone SE, iPhone 13, 13 Pro Max et iPad. Une icône d'écran d'accueil
@@ -320,6 +322,11 @@ auto-hébergées — aucun appel à un CDN, donc aucune donnée de navigation qu
   utilité en consultation sont deux choses différentes.
 - **L'accroche** en gros, détachée : la seule chose à lire en trois secondes.
 - **Fiche de lecture** dépliable, avec l'encadré « pour la pratique » en évidence.
+- **Partager** — sur iPhone, la feuille de partage d'iOS (Messages, WhatsApp, Mail) :
+  titre, accroche et lien de l'article, avec la mention que la fiche est rédigée
+  automatiquement. Ailleurs, le texte est copié, prêt à coller.
+- **Notification du matin** (facultative) — l'édito part sur les téléphones abonnés
+  au sujet ntfy du cabinet ; la toucher ouvre le board. `NOTIF_NTFY` dans `.env`.
 - **Mis de côté** — le signet range une fiche dans une vue à part, avec son contenu
   recopié dans le navigateur : elle reste lisible des mois plus tard, même quand sa
   journée d'origine est loin derrière.
@@ -399,6 +406,7 @@ src/registre.mjs      mémoire des publications déjà fichées (recos et articl
 src/verif.mjs         contrôle des chiffres de la fiche contre le résumé source
 src/decouvrir.mjs     outil de test et de découverte des flux
 deploy/alerte.sh      notification d'échec vers l'exploitant (ntfy/mail)
+src/notifier.mjs      notification du matin aux lectrices (ntfy), facultative
 src/diagnostic.mjs    décompose les requêtes Europe PMC quand le compte tombe à 0
 src/rank.mjs          score, détection de thème, sélection
 src/summarize.mjs     API Claude — schémas de fiche et d'édito imposés

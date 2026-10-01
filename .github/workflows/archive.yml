@@ -1,0 +1,45 @@
+name: Archive de mise à jour
+
+# Pousser un tag « maj-AAAA-MM-JJ » publie l'archive majordoc-maj-AAAA-MM-JJ.zip
+# dans les Releases du dépôt, prête pour deploy/mettre-a-jour.sh :
+#
+#   git tag maj-2026-10-01 && git push origin maj-2026-10-01
+#
+# L'archive n'est construite que si les tests passent : une version cassée ne
+# doit pas pouvoir atterrir sur le serveur du cabinet.
+
+on:
+  push:
+    tags: ['maj-*']
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Tests
+        run: npm test
+
+      - name: Construction de l'archive
+        run: |
+          set -e
+          ARCHIVE="majordoc-maj-${GITHUB_REF_NAME#maj-}.zip"
+          git archive --format=zip --prefix=majordoc/ -o "$ARCHIVE" HEAD
+          unzip -l "$ARCHIVE" | tail -1
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ARCHIVE" \
+            --title "Mise à jour du ${GITHUB_REF_NAME#maj-}" \
+            --notes "Archive prête pour deploy/mettre-a-jour.sh (INSTALLATION.md, section 15)."

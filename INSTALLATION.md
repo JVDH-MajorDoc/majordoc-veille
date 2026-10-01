@@ -266,8 +266,15 @@ Compter 1 à 3 minutes. La sortie se termine par :
 
 ```bash
 cp /opt/majordoc/deploy/nginx-majordoc.conf /etc/nginx/sites-available/majordoc
+mkdir -p /etc/nginx/snippets
+cp /opt/majordoc/deploy/nginx-majordoc-securite.conf /etc/nginx/snippets/majordoc-securite.conf
 nano /etc/nginx/sites-available/majordoc
 ```
+
+Le second fichier porte les en-têtes de sécurité, inclus par chaque bloc du site
+(nginx n'hérite pas des en-têtes d'un niveau à l'autre dès qu'un bloc en déclare
+un). Une fois HTTPS en place (§9), décommentez-y la ligne
+`Strict-Transport-Security`.
 
 Une seule ligne à changer : `server_name veille.example.org;` → votre domaine.
 Si vous n'avez pas de domaine et restez en réseau local, mettez `server_name _;`.
@@ -431,6 +438,23 @@ Ce sont les prix de Claude Sonnet 5.5 par million de tokens et un taux de change
 revoir si vous changez de modèle ou si les prix bougent ; supprimer le bloc
 revient à l'affichage en tokens seuls. L'ordre de grandeur d'une journée à
 quinze fiches est de quelques dizaines de centimes.
+
+## Prévenir les lectrices chaque matin (facultatif)
+
+Une fois la veille publiée, l'édito peut partir en notification sur les iPhone
+du cabinet, et la toucher ouvre le board. Il faut l'application **ntfy**
+(gratuite, sans compte) sur chaque téléphone, abonnée à un même sujet, puis
+dans `/opt/majordoc/.env` :
+
+```
+NOTIF_NTFY=https://ntfy.sh/majordoc-veille-UN-NOM-LONG-ET-SECRET
+MAJORDOC_URL=https://veille.mondomaine.fr
+```
+
+Prenez un sujet **différent** de celui des alertes de panne (`ALERTE_NTFY`
+ci-dessous) : les lectrices n'ont pas à recevoir les journaux d'erreur. Un
+matin sans nouveauté n'envoie rien, et une notification qui échoue ne fait
+jamais échouer la veille.
 
 ## Être prévenu en cas de panne
 
@@ -693,7 +717,10 @@ rm -rf /opt/majordoc/site/data/audio
 
 ## 15. Mettre à jour MajorDoc
 
-Deux commandes, depuis le conteneur :
+L'archive se télécharge depuis les **Releases** du dépôt GitHub : chaque tag
+`maj-AAAA-MM-JJ` poussé y publie `majordoc-maj-AAAA-MM-JJ.zip`, construite
+seulement si les tests passent (`git tag maj-2026-10-01 && git push origin
+maj-2026-10-01`). Copiez-la dans `/tmp` du conteneur, puis deux commandes :
 
 ```bash
 cd /tmp && rm -rf majordoc && unzip -q majordoc-maj-AAAA-MM-JJ.zip
@@ -709,6 +736,24 @@ qu'on oublie de lire ; et il ne touche jamais à `config.json`, `.env` ni
 
 Il s'arrête avant de publier : la dernière étape, qu'il affiche, reste à lancer
 à la main. C'est volontaire — on regarde la veille avant de la republier.
+
+### Configuration nginx (version d'octobre 2026)
+
+La configuration nginx vit hors de `/opt/majordoc` : le script ne la touche pas.
+Celle de cette version corrige deux défauts de la précédente — les fichiers
+audio de la lecture vocale étaient servis comme du JSON (Safari refusait de les
+lire), et les en-têtes de sécurité manquaient sur les données et les ressources.
+Le script signale si elle n'a pas encore été reprise ; pour la reprendre :
+
+```bash
+cp /etc/nginx/sites-available/majordoc /root/majordoc-nginx.avant
+cp /opt/majordoc/deploy/nginx-majordoc.conf /etc/nginx/sites-available/majordoc
+mkdir -p /etc/nginx/snippets
+cp /opt/majordoc/deploy/nginx-majordoc-securite.conf /etc/nginx/snippets/majordoc-securite.conf
+nano /etc/nginx/sites-available/majordoc     # remettre votre server_name
+certbot --nginx -d veille.mondomaine.fr      # si HTTPS : réinstalle le certificat existant
+nginx -t && systemctl reload nginx
+```
 
 ### Passage à Claude Sonnet 5.5 (avant le 24 novembre 2026)
 
