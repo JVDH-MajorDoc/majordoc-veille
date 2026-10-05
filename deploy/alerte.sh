@@ -24,8 +24,10 @@ set -u
 RACINE="/opt/majordoc"
 [ -f "$RACINE/.env" ] && set -a && . "$RACINE/.env" && set +a
 
-SUJET="MajorDoc : la génération du $(date '+%d/%m à %H:%M') a échoué"
-DETAIL="$(journalctl -u majordoc.service -n 25 --no-pager -o cat 2>/dev/null | tail -c 3500)"
+# deploy/fraicheur.sh passe son propre sujet et son propre détail par ces
+# deux variables ; sans elles, c'est l'alerte d'échec de la génération.
+SUJET="${MAJORDOC_SUJET:-MajorDoc : la génération du $(date '+%d/%m à %H:%M') a échoué}"
+DETAIL="${MAJORDOC_DETAIL:-$(journalctl -u majordoc.service -n 25 --no-pager -o cat 2>/dev/null | tail -c 3500)}"
 [ -n "$DETAIL" ] || DETAIL="(journal indisponible — lancez : journalctl -u majordoc.service -n 50)"
 
 envoye=0

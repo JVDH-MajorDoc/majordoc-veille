@@ -106,6 +106,10 @@
     var p = String(iso || '').split('-'); if (p.length < 3) return iso || '';
     return +p[2] + ' ' + MOIS[+p[1] - 1] + ' ' + p[0];
   }
+  /** La date du jour sur l'horloge de la lectrice, au format des journées (AAAA-MM-JJ). */
+  function isoLocal(d) {
+    return d.getFullYear() + '-' + deuxChiffres(d.getMonth() + 1) + '-' + deuxChiffres(d.getDate());
+  }
   function deuxChiffres(n) { return n < 10 ? '0' + n : String(n); }
 
   /* ---------- thème clair / sombre ---------- */
@@ -930,7 +934,9 @@
       '<button class="ctrl jour-courant" id="jour-ouvrir" aria-haspopup="dialog">' +
         '<span class="lg">' + esc(dateLongue(etat.jour.date)) + '</span>' +
         '<span class="sm">' + esc(dateCourte(etat.jour.date)) + '</span>' +
-        (i === 0 ? '<span class="auj">aujourd\'hui</span>' : '') +
+        // « aujourd'hui » seulement si c'est vrai : le 5 octobre, une veille du
+        // 1er restée en tête (timer arrêté) s'affichait « aujourd'hui ».
+        (i === 0 ? '<span class="auj">' + (etat.jour.date === isoLocal(new Date()) ? 'aujourd\'hui' : 'dernière') + '</span>' : '') +
       '</button>' +
       '<button class="ctrl fleche" id="jour-suiv"' + (recent ? ' disabled' : '') +
         ' aria-label="Journée suivante" title="Journée suivante">›</button>';

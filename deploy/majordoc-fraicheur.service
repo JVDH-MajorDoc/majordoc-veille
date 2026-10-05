@@ -1,0 +1,9 @@
+# MajorDoc — contrôle de fraîcheur de la veille publiée (cf. deploy/fraicheur.sh).
+# Copier dans /etc/systemd/system/ avec majordoc-fraicheur.timer, puis :
+#   systemctl daemon-reload && systemctl enable --now majordoc-fraicheur.timer
+[Unit]
+Description=MajorDoc — la veille a-t-elle été republiée ?
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/majordoc/deploy/fraicheur.sh

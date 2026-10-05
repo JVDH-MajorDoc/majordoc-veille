@@ -439,6 +439,23 @@ revoir si vous changez de modèle ou si les prix bougent ; supprimer le bloc
 revient à l'affichage en tokens seuls. L'ordre de grandeur d'une journée à
 quinze fiches est de quelques dizaines de centimes.
 
+## Être prévenu quand la veille n'est plus republiée
+
+L'alerte d'échec ci-dessous ne voit que les générations qui **échouent**. Une
+génération qui ne **démarre** pas — timer arrêté, conteneur figé — ne produit
+aucun échec : le board reste simplement sur une vieille journée. Un contrôle
+indépendant regarde donc chaque jour à 9 h 45 la date de la dernière
+publication, et prévient par les mêmes canaux (`ALERTE_NTFY`, `ALERTE_MAIL`)
+si elle a plus de 30 heures, avec l'état du timer et la fin du journal.
+
+`mettre-a-jour.sh` l'installe de lui-même. À la main :
+
+```bash
+cp /opt/majordoc/deploy/majordoc-fraicheur.{service,timer} /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now majordoc-fraicheur.timer
+MAJORDOC_FRAICHEUR_HEURES=0 bash /opt/majordoc/deploy/fraicheur.sh   # essai : envoie l'alerte
+```
+
 ## Prévenir les lectrices chaque matin (facultatif)
 
 Une fois la veille publiée, l'édito peut partir en notification sur les iPhone
@@ -735,15 +752,16 @@ cd /tmp && rm -rf majordoc && unzip -q majordoc-maj-AAAA-MM-JJ.zip
 bash /tmp/majordoc/deploy/mettre-a-jour.sh
 ```
 
-Le script sauvegarde le code en place **avant** d'y toucher et affiche la
-commande de retour en arrière ; il refuse d'avancer si les tests échouent,
-plutôt que de laisser le timer republier un board cassé le lendemain matin ; il
+Le script sauvegarde le code en place **avant** d'y toucher ; si les tests
+échouent, il remet de lui-même l'ancienne version, plutôt que de laisser le
+timer republier un board cassé le lendemain matin ; il **relance toujours le
+timer en partant**, quelle que soit l'issue (sauf s'il était désactivé exprès) ; il
 signale les réglages nouveaux de `config.json` au lieu de compter sur un `diff`
 qu'on oublie de lire ; et il ne touche jamais à `config.json`, `.env` ni
 `data/`. Il ne demande ni git, ni réseau, ni dépôt distant.
 
-Il s'arrête avant de publier : la dernière étape, qu'il affiche, reste à lancer
-à la main. C'est volontaire — on regarde la veille avant de la republier.
+Le board change au prochain passage du timer ; pour le régénérer tout de suite :
+`systemctl start majordoc.service`.
 
 ### Configuration nginx (version d'octobre 2026)
 

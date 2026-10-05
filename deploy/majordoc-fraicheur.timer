@@ -1,0 +1,13 @@
+# MajorDoc — contrôle quotidien de fraîcheur, indépendant du timer de génération.
+# Trois heures après la veille de 6 h 45 : une génération lente a fini, une
+# génération manquée se voit avant la fin de la matinée.
+[Unit]
+Description=MajorDoc — contrôle de fraîcheur à 9 h 45
+
+[Timer]
+OnCalendar=*-*-* 09:45:00
+Persistent=true
+Unit=majordoc-fraicheur.service
+
+[Install]
+WantedBy=timers.target

@@ -8,7 +8,13 @@
 #   · il sauvegarde le code en place AVANT d'y toucher, et donne la commande
 #     de retour en arrière — c'était le seul point faible de la procédure ;
 #   · il refuse d'avancer si les tests échouent, plutôt que de laisser un
-#     timer republier un board cassé demain matin ;
+#     timer republier un board cassé demain matin : l'ancienne version est
+#     alors remise en place, d'elle-même ;
+#   · il relance toujours le timer en partant, quelle que soit l'issue. Le
+#     01/10/2026, il le laissait arrêté « pour qu'on regarde avant de
+#     republier » ; la commande de relance s'est perdue, et la veille est
+#     restée figée quatre jours sans qu'aucune alerte ne parte — un timer
+#     arrêté n'échoue pas, il se tait ;
 #   · il compare les configs et signale les réglages nouveaux, au lieu de
 #     compter sur un diff qu'on oublie de lire ;
 #   · il ne touche jamais à config.json, .env ni data/.
@@ -30,7 +36,37 @@ sudo_majordoc() { sudo -u "$UTILISATEUR" -g "$UTILISATEUR" "$@"; }
 [ -f "$SOURCE/package.json" ] || { echo "Archive incomplète : $SOURCE ne ressemble pas à MajorDoc." >&2; exit 1; }
 [ "$SOURCE" != "$CIBLE" ] || { echo "La source et la cible sont le même dossier." >&2; exit 1; }
 
-dire "1/6  Arrêt du timer"
+# Un timer désactivé exprès (systemctl disable : veille suspendue) le reste.
+# Sinon, il repart en fin de script — même si le script s'interrompt.
+TIMER_ACTIF=0
+systemctl is-enabled --quiet majordoc.timer 2>/dev/null && TIMER_ACTIF=1
+COPIE_FAITE=0
+TERMINE=0
+
+relancer_timer() {
+  [ "$TIMER_ACTIF" = "1" ] || { echo "     Timer désactivé avant la mise à jour : il le reste."; return 0; }
+  if systemctl start majordoc.timer; then
+    echo "     Timer relancé. Prochaine veille :"
+    systemctl list-timers majordoc.timer --no-pager 2>/dev/null | grep 'majordoc.timer' | sed 's/^/       /'
+  else
+    printf '\n\033[1m  Le timer n'"'"'a pas pu être relancé : systemctl start majordoc.timer\033[0m\n' >&2
+  fi
+}
+
+# Sortie anticipée (tests en échec, copie interrompue…) : l'ancienne version
+# revient en place et le timer repart. Jamais de veille à l'arrêt en partant.
+retablir() {
+  [ "$TERMINE" = "1" ] && return 0
+  if [ "$COPIE_FAITE" = "1" ]; then
+    printf '\n\033[1m  Retour à la version précédente (%s).\033[0m\n' "$SAUVEGARDE" >&2
+    rm -rf "$CIBLE/src" "$CIBLE/tests" "$CIBLE/deploy"
+    cp -a "$SAUVEGARDE/." "$CIBLE/" && chown -R "$UTILISATEUR:$UTILISATEUR" "$CIBLE"
+  fi
+  relancer_timer
+}
+trap retablir EXIT
+
+dire "1/6  Arrêt du timer, le temps de la mise à jour"
 systemctl stop majordoc.timer 2>/dev/null || echo "     (timer déjà arrêté)"
 
 dire "2/6  Sauvegarde du code en place → $SAUVEGARDE"
@@ -39,12 +75,11 @@ mkdir -p "$SAUVEGARDE"
 for x in src tests deploy package.json README.md INSTALLATION.md config.json; do
   [ -e "$CIBLE/$x" ] && cp -a "$CIBLE/$x" "$SAUVEGARDE/"
 done
-echo "     Retour en arrière, si besoin :"
-echo "       systemctl stop majordoc.timer"
+echo "     Retour en arrière, si besoin plus tard :"
 echo "       cp -a $SAUVEGARDE/. $CIBLE/ && chown -R $UTILISATEUR:$UTILISATEUR $CIBLE"
-echo "       systemctl start majordoc.timer"
 
 dire "3/6  Copie du nouveau code"
+COPIE_FAITE=1
 rm -rf "$CIBLE/src" "$CIBLE/tests" "$CIBLE/deploy"
 cp -a "$SOURCE/src" "$SOURCE/deploy" "$CIBLE/"
 [ -d "$SOURCE/tests" ] && cp -a "$SOURCE/tests" "$CIBLE/"
@@ -98,16 +133,24 @@ if [ -d /etc/nginx ] && [ ! -f /etc/nginx/snippets/majordoc-securite.conf ]; the
   echo "     Marche à suivre : INSTALLATION.md, section 15, « Configuration nginx »."
 fi
 
+# Le contrôle de fraîcheur (deploy/fraicheur.sh) prévient quand la veille
+# n'est plus republiée, quelle qu'en soit la cause — timer arrêté compris. Il
+# s'installe de lui-même s'il manque : c'est un filet, pas une option.
+if [ -d /etc/systemd/system ] && [ ! -f /etc/systemd/system/majordoc-fraicheur.timer ]; then
+  cp "$CIBLE/deploy/majordoc-fraicheur.service" "$CIBLE/deploy/majordoc-fraicheur.timer" /etc/systemd/system/
+  systemctl daemon-reload && systemctl enable --now majordoc-fraicheur.timer >/dev/null 2>&1 \
+    && echo "     Contrôle de fraîcheur installé : alerte si la veille n'est pas republiée (chaque jour, 9 h 45)." \
+    || echo "     Contrôle de fraîcheur copié, mais pas activé : systemctl enable --now majordoc-fraicheur.timer"
+fi
+
 dire "5/6  Contrôles"
 cd "$CIBLE"
 
 # Les tests sont la barrière : ils ne demandent ni clé ni réseau, donc un échec
-# ici est un vrai échec. Le timer reste arrêté, rien n'est publié.
+# ici est un vrai échec. La nouvelle version n'est pas gardée : retablir()
+# remet l'ancienne en place et relance le timer.
 if ! sudo_majordoc npm test; then
-  echo >&2
-  printf '\n\033[1m  Les tests échouent. Le timer reste arrêté, rien ne sera publié.\033[0m\n' >&2
-  echo "  Retour en arrière :" >&2
-  echo "    cp -a $SAUVEGARDE/. $CIBLE/ && chown -R $UTILISATEUR:$UTILISATEUR $CIBLE" >&2
+  printf '\n\033[1m  Les tests échouent : la mise à jour est annulée.\033[0m\n' >&2
   exit 1
 fi
 
@@ -123,16 +166,17 @@ if ! sudo_majordoc node src/run.mjs --dry-run; then
   echo "     le timer : node src/diagnostic.mjs"
 fi
 
-dire "6/6  À vous de jouer"
+dire "6/6  Relance"
+TERMINE=1
 [ "$RECOLTE_OK" = "1" ] \
   && echo "     Les tests passent et les sources répondent." \
   || echo "     Les tests passent ; les sources, elles, n'ont pas répondu (voir ci-dessus)."
+relancer_timer
 cat <<TEXTE
-     Le board publié affiche encore l'ancienne version : il change au prochain
-     passage du timer, ou tout de suite avec la première commande.
 
-       cd $CIBLE && sudo -u $UTILISATEUR -g $UTILISATEUR node src/run.mjs
-       systemctl start majordoc.timer
+     Le board publié change au prochain passage du timer. Pour le régénérer
+     tout de suite :
+       systemctl start majordoc.service && journalctl -u majordoc.service -f
 
      Une fois la nouvelle veille vérifiée, la sauvegarde peut partir :
        rm -rf $SAUVEGARDE

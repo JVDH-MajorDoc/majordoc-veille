@@ -406,6 +406,7 @@ src/registre.mjs      mémoire des publications déjà fichées (recos et articl
 src/verif.mjs         contrôle des chiffres de la fiche contre le résumé source
 src/decouvrir.mjs     outil de test et de découverte des flux
 deploy/alerte.sh      notification d'échec vers l'exploitant (ntfy/mail)
+deploy/fraicheur.sh   alerte si la veille n'est plus republiée (timer arrêté compris)
 src/notifier.mjs      notification du matin aux lectrices (ntfy), facultative
 src/diagnostic.mjs    décompose les requêtes Europe PMC quand le compte tombe à 0
 src/rank.mjs          score, détection de thème, sélection
