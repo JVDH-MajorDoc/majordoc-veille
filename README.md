@@ -404,6 +404,7 @@ src/fetch.mjs         client Europe PMC, normalisation
 src/fr.mjs            flux RSS/Atom des organismes français, découverte, filtrage
 src/registre.mjs      mémoire des publications déjà fichées (recos et articles)
 src/verif.mjs         contrôle des chiffres de la fiche contre le résumé source
+src/anomalies.mjs     sources anormalement pauvres : signalement et rattrapage
 src/decouvrir.mjs     outil de test et de découverte des flux
 deploy/alerte.sh      notification d'échec vers l'exploitant (ntfy/mail)
 deploy/fraicheur.sh   alerte si la veille n'est plus republiée (timer arrêté compris)

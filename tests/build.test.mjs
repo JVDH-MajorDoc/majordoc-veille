@@ -57,7 +57,12 @@ test('la purge emporte le fichier voisin avec sa journée', async () => {
   await writeFile(path.join(data, '2020-01-01.json'), JSON.stringify({ date: '2020-01-01', articles: [] }));
   await writeFile(path.join(data, '2020-01-01-sources.json'), JSON.stringify({ 'vieux:1': 'abstract' }));
 
-  await construire({ racine: RACINE, digest: digestType({ textesSource: { 'art:1': 'abstract' } }), sortie, conservation: 30 });
+  // La conservation se compte depuis aujourd'hui, la journée type est datée du
+  // 11/09/2026 : avec 30 jours fixes, le test a cessé de passer le 11 octobre
+  // — et mettre-a-jour.sh, qui s'arrête aux tests, refusait alors toute mise à
+  // jour. Elle couvre donc toujours la journée type, jamais celle de 2020.
+  const age = Math.ceil((Date.now() - Date.parse('2026-09-11')) / 86400000);
+  await construire({ racine: RACINE, digest: digestType({ textesSource: { 'art:1': 'abstract' } }), sortie, conservation: age + 30 });
 
   const restants = await readdir(data);
   assert.ok(!restants.includes('2020-01-01.json'), 'la journée ancienne doit être purgée');

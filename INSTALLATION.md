@@ -519,6 +519,14 @@ essais, chacun ajoutant un élément au précédent (clé et modèle, effort, fi
 structurée, repli sur refus) : le premier en échec désigne la cause, avec le
 message exact de l'API. Coût : quelques centimes.
 
+**« Sources anormalement pauvres » (bandeau ocre, alerte)**
+Europe PMC a livré beaucoup moins d'articles que d'habitude (médiane des deux
+semaines précédentes) : presque toujours un incident d'indexation chez la
+source, pas sur le serveur. La veille est publiée avec ce qui existe, et tant
+que les sources restent pauvres, la fenêtre de récolte s'élargit d'elle-même
+jusqu'à la dernière journée normale (21 jours au plus) pour rattraper. Pour
+vérifier soi-même : `node src/diagnostic.mjs`.
+
 **« Clé API manquante »**
 Le fichier `.env` n'est pas lu. Vérifier qu'il existe, qu'il appartient à `majordoc`
 et qu'il ne contient pas de guillemets autour de la clé :

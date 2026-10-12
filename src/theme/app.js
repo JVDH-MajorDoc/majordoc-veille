@@ -229,7 +229,7 @@
     var j = etat.jour, e = j.edito || {};
     $('#specialite').textContent = j.specialite || '';
 
-    $('#peremption').innerHTML = bandeauFraicheur(j);
+    $('#peremption').innerHTML = bandeauFraicheur(j) + bandeauAnomalie(j);
     $('#avis').innerHTML = j.demo
       ? '<div class="avis"><b>Démonstration.</b> Les fiches ci-dessous sont des exemples fictifs, destinés à montrer le rendu — aucune référence réelle. Lancez <code>npm run digest</code> avec votre clé API pour la veille du jour.</div>'
       : '';
@@ -277,6 +277,22 @@
     return '<div class="peremption"><b>Cette veille date de ' +
       (n >= 1 ? n + (n > 1 ? ' jours' : ' jour') : Math.round(heures) + ' heures') + '.</b> ' +
       'La génération automatique n\'a pas tourné depuis. Les articles parus depuis ne sont pas ici.</div>';
+  }
+
+  /**
+   * Une source qui se tait n'est pas une journée creuse. Le 12/10/2026, la
+   * veille affichait « 0 article » comme un jour sans nouveauté, alors que la
+   * source n'avait livré que 13 articles au lieu d'un millier.
+   */
+  function bandeauAnomalie(j) {
+    var a = j.anomalie;
+    if (!a || !a.habituel) return '';
+    var fr = function (n) { return Number(n).toLocaleString('fr-FR'); };
+    return '<div class="avis"><b>Sources anormalement pauvres ce jour-là.</b> ' +
+      'PubMed et Europe PMC n\'ont livré que ' + fr(a.volume) + ' article' + (a.volume > 1 ? 's' : '') +
+      ', contre ' + fr(a.habituel) + ' environ d\'habitude : un incident d\'indexation chez la source, ' +
+      'pas une journée sans publication. Les veilles suivantes élargissent d\'elles-mêmes la recherche ' +
+      'pour rattraper ce qui manque.</div>';
   }
 
   function jauge(v, l, cls) {

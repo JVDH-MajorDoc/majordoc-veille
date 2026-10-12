@@ -175,7 +175,7 @@ function coutTexte(usage, tarif) {
   return t;
 }
 
-export function fabriquerDigest({ config, articles, recos = [], edito, sources, sourcesFr = [], scannes, modele, usage, manquants = 0, demo = false, date, alerteHeures = 48, textesSource = null }) {
+export function fabriquerDigest({ config, articles, recos = [], edito, sources, sourcesFr = [], scannes, modele, usage, manquants = 0, demo = false, date, alerteHeures = 48, textesSource = null, anomalie = null }) {
   return {
     date: date ?? new Date().toISOString().slice(0, 10),
     genereLe: new Date().toISOString(),
@@ -194,6 +194,9 @@ export function fabriquerDigest({ config, articles, recos = [], edito, sources, 
     edito: edito ?? null,
     sources: sources ?? [],
     sourcesFr,
+    // Sources anormalement pauvres ce jour-là (cf. anomalies.mjs) : le board
+    // le dit, pour qu'une veille vide ne passe pas pour une journée creuse.
+    ...(anomalie ? { anomalie } : {}),
     recos,
     articles,
     // Séparé du reste par `construire` : cf. l'en-tête de ce fichier.

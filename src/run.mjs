@@ -21,6 +21,8 @@ import { construire, fabriquerDigest, aplatir, aplatirRecos } from './build.mjs'
 import { controler } from './verif.mjs';
 import { synthetiser } from './voix.mjs';
 import { notifierEdito } from './notifier.mjs';
+import { historique, detecterChute, fenetreDeRattrapage } from './anomalies.mjs';
+import { spawn } from 'node:child_process';
 import { DIGEST_DEMO } from './demo.mjs';
 import { preparerSources, themeOfficiel } from './vocabulaire.mjs';
 
@@ -149,6 +151,29 @@ async function avecReprise(faire, elements, options) {
   return { ok, rates };
 }
 
+/** Prévient l'exploitant par les canaux de deploy/alerte.sh (ntfy, mail). Jamais bloquant. */
+function alerterChute(chute) {
+  const script = path.join(RACINE, 'deploy', 'alerte.sh');
+  if (!existsSync(script)) return Promise.resolve();
+  const detail = [
+    `Europe PMC n'a livré que ${chute.volume} articles, contre ~${chute.habituel} d'habitude.`,
+    ...chute.parSource.map((s) => `  ${s.label} : ${s.total} (~${s.habituel})`),
+    '',
+    'La veille du jour a été publiée avec ce qui était disponible.',
+    'Incident probable chez la source ; la fenêtre de récolte s\'élargira',
+    'd\'elle-même pour rattraper les jours manqués.',
+    'Vérifier : node src/diagnostic.mjs',
+  ].join('\n');
+  return new Promise((ok) => {
+    const p = spawn('bash', [script], {
+      stdio: 'ignore',
+      env: { ...process.env, MAJORDOC_SUJET: `MajorDoc : sources anormalement pauvres (${chute.volume} articles au lieu de ~${chute.habituel})`, MAJORDOC_DETAIL: detail },
+    });
+    p.on('error', () => ok());
+    p.on('close', () => ok());
+  });
+}
+
 const t0 = Date.now();
 const chrono = () => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
 
@@ -221,8 +246,26 @@ async function main() {
   }
 
   // 2. Littérature internationale
+  // Les journées déjà publiées disent ce que les sources livrent d'habitude :
+  // de quoi reconnaître un jour où elles se taisent, et rattraper ensuite.
+  const dossierData = path.join(o.sortie ?? path.join(RACINE, 'site'), 'data');
+  const hist = await historique(dossierData, { avant: new Date().toISOString().slice(0, 10) });
+  if (!o.jours) {
+    const r = fenetreDeRattrapage(hist, { aujourdhui: new Date().toISOString().slice(0, 10), fenetre: config.fenetre_jours ?? 4 });
+    if (r.fenetre > (config.fenetre_jours ?? 4)) {
+      console.log(`  Rattrapage : les sources étaient anormalement pauvres depuis le ${r.depuis} — fenêtre élargie à ${r.fenetre} jours.`);
+      config.fenetre_jours = r.fenetre;
+    }
+  }
   console.log(`  Récupération sur ${config.fenetre_jours} jours…`);
   const { articles, journal } = await recolter(config);
+  const chute = detecterChute(journal, hist);
+  if (chute) {
+    console.warn(`\n  ! Volume anormalement bas : ${chute.volume} articles livrés, contre ~${chute.habituel} d'habitude.`);
+    for (const s of chute.parSource) console.warn(`      ${s.label} : ${s.total} (habituellement ~${s.habituel})`);
+    console.warn('    Incident probable chez la source (indexation Europe PMC / PubMed), pas sur ce serveur.');
+    console.warn('    La veille est publiée quand même ; la fenêtre s\'élargira d\'elle-même pour rattraper.');
+  }
 
   // Même distinction qu'en aval, mais à la récolte : « les sources répondent
   // et n'ont rien de neuf » est un jour normal, « toutes les sources sont en
@@ -412,7 +455,7 @@ async function main() {
     sources: journal, sourcesFr: journalFr,
     scannes: articles.length, modele, usage, manquants,
     alerteHeures: config.fraicheur_alerte_heures ?? 48,
-    textesSource,
+    textesSource, anomalie: chute,
   });
 
   const r = await construire({
@@ -425,6 +468,10 @@ async function main() {
     ` · ${usage.entree + usage.sortie} tokens · ${chrono()}`);
   console.log(`  Site à jour : ${r.site}  (${r.jours} journée${r.jours > 1 ? 's' : ''} en ligne)`);
   if (r.inline) console.log(`  Fichier autonome : ${r.inline}`);
+
+  // Une source qui se tait n'échoue pas : sans ce signal, l'exploitant
+  // l'apprendrait des lectrices, devant une veille vide.
+  if (chute) await alerterChute(chute);
 
   // La veille est en ligne : on peut l'annoncer. Pas d'édito, pas de
   // notification — un matin sans nouveauté n'a pas à faire vibrer un téléphone.
