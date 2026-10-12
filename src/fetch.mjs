@@ -2,6 +2,10 @@
 // Source : Europe PMC REST (miroir de MEDLINE/PubMed, renvoie les abstracts
 // en un seul appel — pas de clé API, pas de parsing XML).
 // Docs : https://europepmc.org/RestfulWebService
+// Si Europe PMC cesse de suivre PubMed, les sources basculent sur PubMed en
+// direct (cf. pubmed.mjs), avec les mêmes requêtes.
+
+import { chercherPubmed, sonderEuropePmc } from './pubmed.mjs';
 
 const BASE = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search';
 const UA = 'MajorDoc/1.0 (veille bibliographique personnelle)';
@@ -144,23 +148,49 @@ function normaliser(r) {
   };
 }
 
+/**
+ * Interroge PubMed à la place d'Europe PMC si la sonde l'a demandé et que la
+ * requête se traduit. Sinon — ou si PubMed lui-même échoue — Europe PMC, comme
+ * d'habitude : le secours ne doit jamais faire perdre une source qui marchait.
+ */
+async function chercherSource(params, { secours, verbose, label }) {
+  if (secours) {
+    try {
+      return { ...(await chercherPubmed(params)), via: 'PubMed' };
+    } catch (e) {
+      if (verbose) console.warn(`    ! ${label} : secours PubMed impossible (${e.message ?? e}) — Europe PMC.`);
+    }
+  }
+  return chercher(params);
+}
+
 /** Parcourt toutes les sources du config et fusionne les résultats (dédoublonnés). */
 export async function recolter(config, { verbose = true, jourRef = new Date() } = {}) {
   const parId = new Map();
   const journal = [];
+
+  // Europe PMC n'est qu'un miroir de PubMed. Quand il cesse de se mettre à
+  // jour (06/10/2026 : plus rien d'importé pendant des jours), on va chercher
+  // à la source. `"secours_pubmed": false` dans config.json désactive la bascule.
+  const sonde = config.secours_pubmed === false ? null : await sonderEuropePmc({ jourRef });
+  const secours = Boolean(sonde?.enRetard);
+  if (verbose && secours) {
+    console.warn(`  ! Europe PMC en retard : ${sonde.europepmc} articles indexés du ${sonde.dateDebut} au ${sonde.dateFin}, ` +
+      `contre ${sonde.pubmed} sur PubMed. Les sources PubMed sont interrogées en direct.`);
+  }
 
   for (const source of config.sources) {
     const fenetre = source.fenetre_jours ?? config.fenetre_jours ?? 4;
     const dateFin = isoDay(0, jourRef);
     const dateDebut = isoDay(-fenetre, jourRef);
     try {
-      const { articles, total } = await chercher({
+      const { articles, total, via } = await chercherSource({
         query: source.query,
         dateDebut,
         dateFin,
         pageSize: source.page_size ?? 100,
         champDate: source.champ_date ?? config.champ_date ?? 'FIRST_PDATE',
-      });
+      }, { secours, verbose, label: source.label });
       // Garde-fou lié au champ de date. FIRST_IDATE date l'entrée dans l'index,
       // pas la parution : un article publié il y a deux ans mais indexé cette
       // semaine passerait le filtre et s'afficherait dans la veille du jour avec
@@ -197,12 +227,13 @@ export async function recolter(config, { verbose = true, jourRef = new Date() } 
       journal.push({
         source: source.id, label: source.label, recus: retenus.length, total, fenetre,
         ...(tronque ? { tronqueA: plafond } : {}),
+        ...(via ? { via } : {}),
       });
       if (verbose && tronque) {
         console.warn(`    ! ${total} résultats pour un budget de ${plafond} : ${total - plafond} article(s) ` +
           'jamais soumis au classement. Relever page_size, ou resserrer la fenêtre.');
       }
-      if (verbose) console.log(`  ✓ ${source.label} : ${retenus.length} article(s) retenus sur ${total} (${fenetre} j)` +
+      if (verbose) console.log(`  ✓ ${source.label}${via ? ` (via ${via})` : ''} : ${retenus.length} article(s) retenus sur ${total} (${fenetre} j)` +
         (tropVieux ? ` · ${tropVieux} écarté(s), parution de plus de ${ageMax} j` : ''));
     } catch (e) {
       journal.push({ source: source.id, label: source.label, erreur: String(e.message ?? e) });
@@ -210,5 +241,5 @@ export async function recolter(config, { verbose = true, jourRef = new Date() } 
     }
   }
 
-  return { articles: [...parId.values()], journal };
+  return { articles: [...parId.values()], journal, sonde };
 }

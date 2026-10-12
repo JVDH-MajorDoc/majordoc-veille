@@ -915,7 +915,8 @@
     var j = etat.jour;
     var src = (j.sourcesFr || []).concat(j.sources || []).map(function (s) {
       return '<dt>' + esc(s.label) + '</dt><dd' + (s.erreur ? ' class="ko"' : '') + '>' +
-        (s.erreur ? esc(s.erreur) : s.recus + ' retenus sur ' + s.total + ' · fenêtre ' + s.fenetre + ' j') + '</dd>';
+        (s.erreur ? esc(s.erreur) : s.recus + ' retenus sur ' + s.total + ' · fenêtre ' + s.fenetre + ' j' +
+          (s.via ? ' · via ' + esc(s.via) : '')) + '</dd>';
     }).join('');
 
     $('#pied').innerHTML =

@@ -85,6 +85,16 @@ quota. Les liens PubMed sont générés normalement. Les *Annales d'Endocrinolog
 sont indexées, donc la revue de la SFE passe par le même canal, avec une fenêtre de
 60 jours puisqu'elle est mensuelle.
 
+**Et quand le miroir ne suit plus ?** Du 6 au 12 octobre 2026, Europe PMC n'a
+presque rien importé de MEDLINE, alors que PubMed publiait comme d'habitude. Chaque
+passage commence donc par une sonde : elle compare ce que les deux bases ont indexé
+sur les trois derniers jours. Si Europe PMC tombe sous 15 % du volume de PubMed, les
+sources interrogent PubMed en direct (E-utilities), avec les mêmes requêtes traduites
+automatiquement, et le pied du board l'indique (« via PubMed »). Dès que le miroir se
+remet à jour, la veille y revient d'elle-même. `"secours_pubmed": false` dans
+`config.json` désactive la bascule ; une clé `NCBI_API_KEY` dans `.env` (facultative)
+relève le quota du NCBI de 3 à 10 requêtes par seconde.
+
 **Ce que l'audit du 13 août 2026 a appris.** Une praticienne a relu les quarante
 premiers articles d'une journée et en a réclamé deux qui étaient tombés juste sous
 la limite. Le réflexe — relever le plafond — n'aurait ramené que le premier. La
@@ -401,6 +411,7 @@ Pour purger malgré tout, `jours_conservation` dans `config.json` : `0` conserve
 config.json           spécialité, sources, barème de tri
 .env                  ANTHROPIC_API_KEY (jamais versionné, jamais envoyé au serveur)
 src/fetch.mjs         client Europe PMC, normalisation
+src/pubmed.mjs        secours PubMed en direct quand Europe PMC ne suit plus
 src/fr.mjs            flux RSS/Atom des organismes français, découverte, filtrage
 src/registre.mjs      mémoire des publications déjà fichées (recos et articles)
 src/verif.mjs         contrôle des chiffres de la fiche contre le résumé source

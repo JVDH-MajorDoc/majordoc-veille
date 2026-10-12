@@ -527,6 +527,10 @@ que les sources restent pauvres, la fenêtre de récolte s'élargit d'elle-même
 jusqu'à la dernière journée normale (21 jours au plus) pour rattraper. Pour
 vérifier soi-même : `node src/diagnostic.mjs`.
 
+Si c'est Europe PMC qui a cessé de suivre PubMed, la veille le détecte et
+interroge PubMed en direct : le journal affiche « Europe PMC en retard », le pied
+du board « via PubMed », et le bandeau n'apparaît pas puisque rien ne manque.
+
 **« Clé API manquante »**
 Le fichier `.env` n'est pas lu. Vérifier qu'il existe, qu'il appartient à `majordoc`
 et qu'il ne contient pas de guillemets autour de la clé :
