@@ -412,6 +412,7 @@ config.json           spécialité, sources, barème de tri
 .env                  ANTHROPIC_API_KEY (jamais versionné, jamais envoyé au serveur)
 src/fetch.mjs         client Europe PMC, normalisation
 src/pubmed.mjs        secours PubMed en direct quand Europe PMC ne suit plus
+src/comparer-modeles.mjs  fiches d'une journée par plusieurs réglages, côte à côte (npm run comparer)
 src/fr.mjs            flux RSS/Atom des organismes français, découverte, filtrage
 src/registre.mjs      mémoire des publications déjà fichées (recos et articles)
 src/verif.mjs         contrôle des chiffres de la fiche contre le résumé source

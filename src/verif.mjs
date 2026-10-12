@@ -22,24 +22,77 @@ const CHAMPS_RECO = ['accroche', 'ce_qui_change', 'points_cles', 'population', '
  * chaque nombre est lu dans TOUTES ses interprétations plausibles, et deux
  * nombres concordent dès qu'une lecture de l'un rejoint une lecture de l'autre.
  */
-const JETON = /-?\d+(?:[.,\u00a0 ]\d+)*/g;
+// Une espace ne sépare des milliers que devant trois chiffres exactement :
+// sans cette règle, « Ki-67 30 % » se lisait « 6 730 ».
+const JETON = /-?\d+(?:[.,]\d+|[\u00a0 ]\d{3}(?!\d))*/g;
 
 /** Un groupe de milliers ne commence jamais par zéro : « 0,001 » n'en est pas un. */
 const MILLIERS = /^-?(?!0\d*[,\u00a0 ])\d{1,3}(?:[,\u00a0 ]\d{3})+$/;
 
+/**
+ * Les écritures qui faisaient crier le filet pour rien, relevées sur les fiches
+ * du 5 au 12 octobre 2026 (48 fiches sur 90 signalées, presque toutes à tort) :
+ * le point médian du Lancet (« 1·06 »), la décimale sans zéro du style APA
+ * (« β = -.095 »), les dates (« 22/09/2025 ») et les énumérations (« (3) »).
+ */
 function unifier(texte) {
-  return String(texte ?? '').replace(/[\u2212\u2013\u2014\u2012]/g, '-').replace(/[\u00a0\u202f]/g, ' ');
+  return String(texte ?? '')
+    .replace(/[\u2212\u2013\u2014\u2012]/g, '-')
+    .replace(/[\u00a0\u202f]/g, ' ')
+    .replace(/(\d)\u00b7(\d)/g, '$1.$2')
+    .replace(/(^|[^\d.,])\.(\d)/g, (_, avant, chiffre) => `${avant}0.${chiffre}`)
+    .replace(/\b(?:\d{1,2}\/)?\d{1,2}\/\d{4}\b/g, ' ')
+    .replace(/\(\d\)/g, ' ');
 }
 
 function estAnnee(n, lectures) {
-  return Number.isInteger(n) && n >= 1900 && n <= 2100 && lectures.every((l) => l.decimales === 0);
+  const a = Math.abs(n); // « 2006-2019 » : le trait d'union n'est pas un signe moins
+  return Number.isInteger(a) && a >= 1900 && a <= 2100 && lectures.every((l) => l.decimales === 0);
+}
+
+/**
+ * Un nombre collé à des lettres fait partie d'un nom, pas d'un résultat :
+ * IC95, Ki-67, HbA1c, I2, DT2, NNC0385-0434. On remonte la suite de chiffres
+ * et de tirets qui le précède : si elle part d'une lettre, il est ignoré.
+ */
+function estDansUnNom(texte, index) {
+  let i = index - 1;
+  while (i >= 0 && /[\d.,-]/.test(texte[i])) i--;
+  return i >= 0 && /\p{L}/u.test(texte[i]);
+}
+
+/**
+ * « 6,07 M » face à « 6,070,000 » : l'échelle écrite en toutes lettres ou en
+ * abrégé — y compris pour la borne basse d'un intervalle (« 2,23-14,29 M »).
+ */
+const ECHELLES = [
+  [/^(?:\s?-\s?\d[\d.,]*)?\s?(?:millions?|M)\b/, 6],
+  [/^(?:\s?-\s?\d[\d.,]*)?\s?(?:milliards?|Md|billions?)\b/, 9],
+];
+
+/** Les résumés écrivent souvent les petits effectifs en toutes lettres : « two trials ». */
+const NOMBRES_EN = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
+  seventy: 70, eighty: 80, ninety: 90, hundred: 100,
+};
+const MOT_NOMBRE = new RegExp(String.raw`\b(${Object.keys(NOMBRES_EN).join('|')})\b`, 'gi');
+
+function nombresEnLettres(texte) {
+  return [...String(texte ?? '').matchAll(MOT_NOMBRE)].map((m) => ({
+    brut: m[0], lectures: [{ valeur: NOMBRES_EN[m[1].toLowerCase()], decimales: 0 }],
+  }));
 }
 
 /** @returns {{brut:string, lectures:{valeur:number, decimales:number}[]}[]} */
 function extraire(texte) {
   const out = [];
-  for (const m of unifier(texte).matchAll(JETON)) {
+  const t = unifier(texte);
+  for (const m of t.matchAll(JETON)) {
     const brut = m[0];
+    if (estDansUnNom(t, m.index)) continue;
+    if (t.startsWith('(OH)', m.index + brut.length)) continue; // 25(OH)D
     const lectures = [];
     const ajouter = (t) => {
       const v = Number(t);
@@ -55,6 +108,15 @@ function extraire(texte) {
 
     if (!lectures.length) continue;
     if (estAnnee(lectures[0].valeur, lectures)) continue;
+    // Une échelle qui suit (« 6,07 M ») ajoute la lecture à l'unité ; la
+    // tolérance suit, puisque les décimales deviennent négatives.
+    const suite = t.slice(m.index + brut.length, m.index + brut.length + 24);
+    for (const [re, puissance] of ECHELLES) {
+      if (!re.test(suite)) continue;
+      for (const l of [...lectures]) {
+        lectures.push({ valeur: l.valeur * 10 ** puissance, decimales: l.decimales - puissance });
+      }
+    }
     out.push({ brut, lectures });
   }
   return out;
@@ -104,7 +166,7 @@ export function verifierChiffres(fiche, texteSource, { type = 'article' } = {}) 
   const dansLaFiche = extraire(textesDe(fiche, champs));
   if (!dansLaFiche.length) return { controles: 0, absents: [] };
 
-  const source = extraire(texteSource);
+  const source = [...extraire(texteSource), ...nombresEnLettres(texteSource)];
   const absents = [];
   for (const c of dansLaFiche) {
     if (retrouve(c, source)) continue;

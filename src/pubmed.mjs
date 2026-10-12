@@ -151,6 +151,16 @@ export async function chercherPubmed({ query, dateDebut, dateFin, pageSize = 100
   return { articles, total: Number(r.count ?? 0), requete: terme };
 }
 
+/** Les articles de ces PMID, dans l'ordre demandé (ceux qui manquent ou sans abstract sont omis). */
+export async function articlesParPmid(pmids) {
+  const parPmid = new Map();
+  for (let i = 0; i < pmids.length; i += LOT) {
+    const xml = await appelNcbi('efetch', { db: 'pubmed', retmode: 'xml', id: pmids.slice(i, i + LOT).join(',') }, { format: 'xml' });
+    for (const a of analyserXml(xml)) parPmid.set(a.pmid, a);
+  }
+  return pmids.map((p) => parPmid.get(String(p))).filter(Boolean);
+}
+
 // ——— La sonde ————————————————————————————————————————————————————————————
 
 /** Décision pure, testable : Europe PMC est-il en retard sur PubMed ? */

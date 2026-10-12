@@ -7,7 +7,7 @@ const fiche = (accroche) => ({ accroche });
 
 test('un chiffre présent dans le résumé source ne déclenche rien', () => {
   const r = verifierChiffres(fiche('HbA1c abaissée de 1,2 %'), 'HbA1c fell by 1.2% over 24 weeks');
-  assert.equal(r.controles, 2);
+  assert.equal(r.controles, 1, 'le 1 de HbA1c fait partie du nom, il n’est pas contrôlé');
   assert.deepEqual(r.absents, []);
 });
 
@@ -64,4 +64,32 @@ test('controler pose la vérification sur chaque fiche et compte les signalées'
   assert.deepEqual(bilan, { total: 2, signalees: 1 });
   assert.deepEqual(resultats[0].fiche.verif.absents, []);
   assert.deepEqual(resultats[1].fiche.verif.absents, ['37']);
+});
+
+// Faux positifs relevés sur les fiches du 5 au 12 octobre 2026.
+test('un nombre collé à des lettres fait partie d’un nom (IC95, Ki-67, I2, 25(OH)D)', () => {
+  const r = verifierChiffres(fiche('OR 2,17 (IC95% 1,29-3,64 ; I2 48 %), Ki-67 30 %, 25(OH)D basse, NNC0385-0434'),
+    'OR 2.17 (95% CI 1.29 to 3.64; I² = 48%), Ki-67 index 30%');
+  assert.deepEqual(r.absents, []);
+});
+
+test('le point médian du Lancet et la décimale sans zéro sont des décimales', () => {
+  assert.deepEqual(verifierChiffres(fiche('rapport 1,06 ; IC95% 0,56 à 2,01'), 'ratio 1·06 [95% CI 0·56 to 2·01]').absents, []);
+  assert.deepEqual(verifierChiffres(fiche('β = -0,095 ; pFDR = 0,032'), '(β = -.095, pFDR = .032)').absents, []);
+});
+
+test('une plage d’années, une date et une énumération ne sont pas des résultats', () => {
+  const r = verifierChiffres(fiche('registres 2006-2019, recherche au 22/09/2025 (09/2020-09/2025) ; (3) association précoce'), 'no such numbers');
+  assert.equal(r.controles, 0);
+});
+
+test('« 6,07 M » concorde avec « 6,070,000 »', () => {
+  const r = verifierChiffres(fiche('cas 6,07 M vers 3,995 M (2,23-14,29 M)'), 'from 6,070,000 to 3,995,000 (2,230,000-14,290,000)');
+  assert.deepEqual(r.absents, []);
+});
+
+test('un effectif écrit en toutes lettres dans le résumé concorde', () => {
+  assert.deepEqual(verifierChiffres(fiche('Seuls 2 essais, 8 femmes'), 'only two trials; eight women').absents, []);
+  // Un chiffre vraiment ajouté reste signalé.
+  assert.deepEqual(verifierChiffres(fiche('NNT voisin de 5'), 'only two trials').absents, ['5']);
 });
